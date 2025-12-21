@@ -16,6 +16,8 @@
         .day-btn.active { background-color: #38bdf8; color: white; transform: scale(1.05); box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4); }
         .memo-link { color: #38bdf8; text-decoration: underline; font-weight: bold; word-break: break-all; }
         #loading-screen { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .img-container { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; }
+        .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
 </head>
 <body class="pb-24">
@@ -35,6 +37,24 @@
     </header>
 
     <main id="app-content" class="relative z-10">
+        <section class="px-5 mt-4">
+            <div id="weather-box" class="glass-card rounded-[2rem] p-5 flex items-center justify-between shadow-sm border border-white/60">
+                <div class="flex items-center gap-4">
+                    <div id="weather-icon" class="text-4xl">
+                        <i class="fas fa-location-arrow text-sky-300 animate-pulse"></i>
+                    </div>
+                    <div>
+                        <h4 id="weather-location" class="font-black text-slate-700 text-lg">定位中...</h4>
+                        <p id="weather-desc" class="text-slate-500 text-xs font-bold">請允許 GPS 存取</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div id="weather-temp" class="text-3xl font-black text-sky-500">--°C</div>
+                    <div id="weather-rain" class="text-[10px] text-slate-400 font-bold">降雨 --%</div>
+                </div>
+            </div>
+        </section>
+
         <section id="tab-schedule" class="tab-content">
             <nav id="day-tabs" class="flex overflow-x-auto p-4 gap-3 sticky top-[85px] z-40 hide-scroll"></nav>
             <div id="schedule-container" class="px-4 pb-4 space-y-5"></div>
@@ -73,6 +93,7 @@
 
     <script>
         let travelData = {};
+        // 確保下方的網址是您最新的部署網址
         const apiUrl = "https://script.google.com/macros/s/AKfycbzDB3nOB_gZuJsnpwAX7c_3gzomqmnsZmm9FKXmvybZ4UmW_218h-V-o3N9M5v6uww06w/exec";
 
         function linkify(text) {
@@ -80,16 +101,61 @@
             return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" class="memo-link">${url}</a>`);
         }
 
+        async function updateWeatherByGPS() {
+            const descEl = document.getElementById('weather-desc');
+            const locEl = document.getElementById('weather-location');
+            if (!navigator.geolocation) {
+                descEl.innerText = "不支援定位";
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                try {
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=precipitation_probability_max&timezone=auto`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    const code = data.current.weather_code;
+                    const temp = Math.round(data.current.temperature_2m);
+                    const rainProb = data.daily.precipitation_probability_max[0];
+                    
+                    locEl.innerText = "目前位置";
+                    document.getElementById('weather-temp').innerText = temp + "°C";
+                    document.getElementById('weather-rain').innerText = "降雨 " + rainProb + "%";
+                    setWeatherStatus(code);
+                } catch (e) { descEl.innerText = "讀取失敗"; }
+            }, (err) => { 
+                descEl.innerText = "請開啟 GPS"; 
+                locEl.innerText = "定位關閉";
+            });
+        }
+
+        function setWeatherStatus(code) {
+            const iconEl = document.getElementById('weather-icon');
+            const descEl = document.getElementById('weather-desc');
+            let icon = '<i class="fas fa-cloud text-sky-300"></i>';
+            let desc = "多雲";
+            if (code === 0) { icon = '<i class="fas fa-sun text-orange-400"></i>'; desc = "晴朗"; }
+            else if (code >= 1 && code <= 3) { icon = '<i class="fas fa-cloud-sun text-sky-400"></i>'; desc = "多雲"; }
+            else if (code >= 71 && code <= 77) { icon = '<i class="fas fa-snowflake text-blue-200 animate-bounce"></i>'; desc = "降雪 ❄️"; }
+            else if (code >= 51 && code <= 67) { icon = '<i class="fas fa-cloud-showers-heavy text-blue-400"></i>'; desc = "有雨"; }
+            iconEl.innerHTML = icon;
+            descEl.innerText = desc;
+        }
+
         async function fetchTravelData() {
             try {
                 const response = await fetch(apiUrl + "?t=" + new Date().getTime());
                 travelData = await response.json();
+                if (travelData.error) throw new Error(travelData.error);
+                
                 document.getElementById('loading-screen').style.display = 'none';
                 renderSchedule();
                 renderExpenses();
                 createSnow();
             } catch (error) {
-                document.getElementById('loading-text').innerText = "連線失敗，請檢查 API 或權限";
+                console.error("讀取失敗:", error);
+                document.getElementById('loading-text').innerHTML = "讀取失敗，請確認 API 授權！<br><small>" + error.message + "</small>";
             }
         }
 
@@ -98,6 +164,8 @@
             document.getElementById('trip-title').innerText = travelData.title;
             const tabs = document.getElementById('day-tabs');
             const container = document.getElementById('schedule-container');
+            tabs.innerHTML = '';
+            container.innerHTML = '';
 
             travelData.days.forEach((d, i) => {
                 const btn = document.createElement('button');
@@ -118,14 +186,13 @@
                 d.items.forEach(item => {
                     html += `
                         <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm">
-                            <div class="relative h-48 overflow-hidden">
+                            <div class="img-container">
                                 <img src="${item.img}" class="w-full h-full object-cover" loading="lazy">
-                                <div class="absolute top-3 left-3 bg-white/90 px-3 py-1 rounded-full text-xs font-black text-sky-500 shadow-sm">${item.time}</div>
+                                <div class="absolute top-3 left-3 bg-white/90 px-3 py-1 rounded-full text-[10px] font-black text-sky-500 shadow-sm">${item.time}</div>
                             </div>
                             <div class="p-5">
                                 <h3 class="font-black text-lg text-slate-700 mb-1">${item.title}</h3>
-                                <p class="text-slate-500 text-sm leading-relaxed mb-4">${item.desc || ''}</p>
-                                
+                                <p class="text-slate-500 text-sm leading-relaxed mb-4 line-clamp-3">${item.desc || ''}</p>
                                 <div class="flex gap-2">
                                     <button onclick="openMemo('${item.title}', '${item.memo.replace(/'/g, "\\'")}')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-2xl text-xs font-bold active:bg-slate-200 transition">筆記</button>
                                     <a href="${item.map}" target="_blank" class="flex-1 bg-sky-400 text-white py-3 rounded-2xl text-xs font-bold text-center shadow-lg shadow-sky-200 active:bg-sky-500 transition">導航</a>
@@ -146,6 +213,14 @@
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            const btns = document.querySelectorAll('footer button');
+            if(tab === 'schedule') {
+                btns[0].className = 'text-sky-400';
+                btns[1].className = 'text-slate-300';
+            } else {
+                btns[0].className = 'text-slate-300';
+                btns[1].className = 'text-sky-400';
+            }
         }
 
         function openMemo(title, text) {
@@ -156,7 +231,6 @@
 
         function closeMemo() { document.getElementById('memo-modal').classList.replace('flex', 'hidden'); }
 
-        // --- 記帳邏輯 ---
         let expenses = JSON.parse(localStorage.getItem('trip_exp')) || [];
         function addExpense() {
             const title = document.getElementById('exp-title').value;
@@ -195,7 +269,10 @@
             }
         }
 
-        window.onload = fetchTravelData;
+        window.onload = () => {
+            fetchTravelData();
+            updateWeatherByGPS();
+        };
     </script>
 </body>
 </html>
