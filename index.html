@@ -93,7 +93,6 @@
 
     <script>
         let travelData = {};
-        // 確保下方的網址是您最新的部署網址
         const apiUrl = "https://script.google.com/macros/s/AKfycbzDB3nOB_gZuJsnpwAX7c_3gzomqmnsZmm9FKXmvybZ4UmW_218h-V-o3N9M5v6uww06w/exec";
 
         function linkify(text) {
@@ -101,6 +100,7 @@
             return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" class="memo-link">${url}</a>`);
         }
 
+        // --- 天氣邏輯 (GPS 定位) ---
         async function updateWeatherByGPS() {
             const descEl = document.getElementById('weather-desc');
             const locEl = document.getElementById('weather-location');
@@ -121,7 +121,7 @@
                     
                     locEl.innerText = "目前位置";
                     document.getElementById('weather-temp').innerText = temp + "°C";
-                    document.getElementById('weather-rain').innerText = "降雨 " + rainProb + "%";
+                    document.getElementById('weather-rain').innerText = "降雨機率 " + rainProb + "%";
                     setWeatherStatus(code);
                 } catch (e) { descEl.innerText = "讀取失敗"; }
             }, (err) => { 
@@ -184,11 +184,20 @@
                 
                 let html = '';
                 d.items.forEach(item => {
+                    // --- 修正時間格式問題：如果是長字串，只截取 HH:mm ---
+                    let displayTime = item.time || "";
+                    if (displayTime.includes(":") && displayTime.length > 5) {
+                        const parts = displayTime.split(" ");
+                        // 尋找包含 ":" 的那個部分 (通常是 01:00:00)
+                        const timePart = parts.find(p => p.includes(":"));
+                        if (timePart) displayTime = timePart.substring(0, 5); 
+                    }
+
                     html += `
                         <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm">
                             <div class="img-container">
                                 <img src="${item.img}" class="w-full h-full object-cover" loading="lazy">
-                                <div class="absolute top-3 left-3 bg-white/90 px-3 py-1 rounded-full text-[10px] font-black text-sky-500 shadow-sm">${item.time}</div>
+                                <div class="absolute top-3 left-3 bg-white/90 px-3 py-1 rounded-full text-[10px] font-black text-sky-500 shadow-sm">${displayTime}</div>
                             </div>
                             <div class="p-5">
                                 <h3 class="font-black text-lg text-slate-700 mb-1">${item.title}</h3>
@@ -215,11 +224,11 @@
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
             const btns = document.querySelectorAll('footer button');
             if(tab === 'schedule') {
-                btns[0].className = 'text-sky-400';
-                btns[1].className = 'text-slate-300';
+                btns[0].classList.replace('text-slate-300', 'text-sky-400');
+                btns[1].classList.replace('text-sky-400', 'text-slate-300');
             } else {
-                btns[0].className = 'text-slate-300';
-                btns[1].className = 'text-sky-400';
+                btns[0].classList.replace('text-sky-400', 'text-slate-300');
+                btns[1].classList.replace('text-slate-300', 'text-sky-400');
             }
         }
 
