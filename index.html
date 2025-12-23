@@ -80,7 +80,7 @@
         <div class="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl p-8 relative">
             <h3 id="modal-title" class="text-2xl font-black text-slate-700 mb-4 text-center border-b pb-2"></h3>
             <div class="bg-slate-50 rounded-2xl p-4 text-sm text-slate-600 leading-7 max-h-60 overflow-y-auto">
-                <p id="modal-memo" class="whitespace-pre-wrap"></p>
+                <div id="modal-memo" class="whitespace-pre-wrap"></div>
             </div>
             <button onclick="closeMemo()" class="mt-6 w-full bg-slate-800 text-white py-4 rounded-2xl font-bold active:scale-95 transition">關閉</button>
         </div>
@@ -93,6 +93,7 @@
 
     <script>
         let travelData = {};
+        // 請更換為您最新的 Google Apps Script 網址
         const apiUrl = "https://script.google.com/macros/s/AKfycbzDB3nOB_gZuJsnpwAX7c_3gzomqmnsZmm9FKXmvybZ4UmW_218h-V-o3N9M5v6uww06w/exec";
 
         function linkify(text) {
@@ -100,14 +101,19 @@
             return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" class="memo-link">${url}</a>`);
         }
 
-        // --- 天氣邏輯 (GPS 定位) ---
+        // 自動編號處理函數
+        function formatAsList(text) {
+            if (!text) return '尚無內容';
+            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+            if (lines.length <= 1) return text; 
+            return `<ol class="list-decimal ml-5 space-y-1">${lines.map(line => `<li>${line}</li>`).join('')}</ol>`;
+        }
+
+        // 天氣 GPS 邏輯
         async function updateWeatherByGPS() {
             const descEl = document.getElementById('weather-desc');
             const locEl = document.getElementById('weather-location');
-            if (!navigator.geolocation) {
-                descEl.innerText = "不支援定位";
-                return;
-            }
+            if (!navigator.geolocation) return;
             navigator.geolocation.getCurrentPosition(async (position) => {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
@@ -118,8 +124,7 @@
                     const code = data.current.weather_code;
                     const temp = Math.round(data.current.temperature_2m);
                     const rainProb = data.daily.precipitation_probability_max[0];
-                    
-                    locEl.innerText = "目前位置";
+                    locEl.innerText = "目前位置天氣";
                     document.getElementById('weather-temp').innerText = temp + "°C";
                     document.getElementById('weather-rain').innerText = "降雨機率 " + rainProb + "%";
                     setWeatherStatus(code);
@@ -133,14 +138,12 @@
         function setWeatherStatus(code) {
             const iconEl = document.getElementById('weather-icon');
             const descEl = document.getElementById('weather-desc');
-            let icon = '<i class="fas fa-cloud text-sky-300"></i>';
-            let desc = "多雲";
+            let icon = '<i class="fas fa-cloud text-sky-300"></i>', desc = "多雲";
             if (code === 0) { icon = '<i class="fas fa-sun text-orange-400"></i>'; desc = "晴朗"; }
             else if (code >= 1 && code <= 3) { icon = '<i class="fas fa-cloud-sun text-sky-400"></i>'; desc = "多雲"; }
             else if (code >= 71 && code <= 77) { icon = '<i class="fas fa-snowflake text-blue-200 animate-bounce"></i>'; desc = "降雪 ❄️"; }
             else if (code >= 51 && code <= 67) { icon = '<i class="fas fa-cloud-showers-heavy text-blue-400"></i>'; desc = "有雨"; }
-            iconEl.innerHTML = icon;
-            descEl.innerText = desc;
+            iconEl.innerHTML = icon; descEl.innerText = desc;
         }
 
         async function fetchTravelData() {
@@ -148,14 +151,12 @@
                 const response = await fetch(apiUrl + "?t=" + new Date().getTime());
                 travelData = await response.json();
                 if (travelData.error) throw new Error(travelData.error);
-                
                 document.getElementById('loading-screen').style.display = 'none';
                 renderSchedule();
                 renderExpenses();
                 createSnow();
             } catch (error) {
-                console.error("讀取失敗:", error);
-                document.getElementById('loading-text').innerHTML = "讀取失敗，請確認 API 授權！<br><small>" + error.message + "</small>";
+                document.getElementById('loading-text').innerHTML = "讀取失敗，請確認 API！<br><small>" + error.message + "</small>";
             }
         }
 
@@ -164,8 +165,7 @@
             document.getElementById('trip-title').innerText = travelData.title;
             const tabs = document.getElementById('day-tabs');
             const container = document.getElementById('schedule-container');
-            tabs.innerHTML = '';
-            container.innerHTML = '';
+            tabs.innerHTML = ''; container.innerHTML = '';
 
             travelData.days.forEach((d, i) => {
                 const btn = document.createElement('button');
@@ -173,44 +173,44 @@
                 btn.innerHTML = `<span class="block text-[10px] opacity-60">Day ${d.day}</span>${d.date}`;
                 btn.onclick = () => {
                     document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    showDay(d.day);
+                    btn.classList.add('active'); showDay(d.day);
                 };
                 tabs.appendChild(btn);
 
                 const div = document.createElement('div');
                 div.id = `day-sec-${d.day}`;
                 div.className = `day-section ${i === 0 ? '' : 'hidden'}`;
-                
                 let html = '';
                 d.items.forEach(item => {
-                    // --- 修正時間格式問題：如果是長字串，只截取 HH:mm ---
                     let displayTime = item.time || "";
                     if (displayTime.includes(":") && displayTime.length > 5) {
-                        const parts = displayTime.split(" ");
-                        // 尋找包含 ":" 的那個部分 (通常是 01:00:00)
-                        const timePart = parts.find(p => p.includes(":"));
+                        const timePart = displayTime.split(" ").find(p => p.includes(":"));
                         if (timePart) displayTime = timePart.substring(0, 5); 
                     }
-
                     html += `
                         <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm">
                             <div class="img-container">
                                 <img src="${item.img}" class="w-full h-full object-cover" loading="lazy">
-                                <div class="absolute top-3 left-3 bg-white/90 px-3 py-1 rounded-full text-[10px] font-black text-sky-500 shadow-sm">${displayTime}</div>
+                                <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
+                                    <i class="far fa-clock mr-1"></i>${displayTime}
+                                </div>
                             </div>
                             <div class="p-5">
-                                <h3 class="font-black text-lg text-slate-700 mb-1">${item.title}</h3>
-                                <p class="text-slate-500 text-sm leading-relaxed mb-4 line-clamp-3">${item.desc || ''}</p>
+                                <h3 class="font-black text-lg text-slate-700 mb-2 tracking-tight">${item.title}</h3>
+                                <div class="text-slate-500 text-sm leading-relaxed mb-4">
+                                    ${formatAsList(item.desc)}
+                                </div>
                                 <div class="flex gap-2">
-                                    <button onclick="openMemo('${item.title}', '${item.memo.replace(/'/g, "\\'")}')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-2xl text-xs font-bold active:bg-slate-200 transition">筆記</button>
-                                    <a href="${item.map}" target="_blank" class="flex-1 bg-sky-400 text-white py-3 rounded-2xl text-xs font-bold text-center shadow-lg shadow-sky-200 active:bg-sky-500 transition">導航</a>
+                                    <button onclick="openMemo('${item.title}', '${item.memo.replace(/'/g, "\\'")}')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl text-[10px] font-bold active:bg-slate-200 transition">筆記</button>
+                                    <a href="${item.map}" target="_blank" class="flex-1 bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center shadow-md active:bg-sky-500 transition">導航</a>
+                                    <a href="goapp://app" class="flex-1 bg-black text-white py-3 rounded-xl text-[10px] font-bold text-center shadow-md active:opacity-80 transition flex items-center justify-center gap-1">
+                                        <i class="fas fa-taxi text-yellow-400"></i> GO
+                                    </a>
                                 </div>
                             </div>
                         </div>`;
                 });
-                div.innerHTML = html;
-                container.appendChild(div);
+                div.innerHTML = html; container.appendChild(div);
             });
         }
 
@@ -223,18 +223,17 @@
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
             const btns = document.querySelectorAll('footer button');
-            if(tab === 'schedule') {
-                btns[0].classList.replace('text-slate-300', 'text-sky-400');
-                btns[1].classList.replace('text-sky-400', 'text-slate-300');
-            } else {
-                btns[0].classList.replace('text-sky-400', 'text-slate-300');
-                btns[1].classList.replace('text-slate-300', 'text-sky-400');
-            }
+            btns[0].className = tab === 'schedule' ? 'text-sky-400' : 'text-slate-300';
+            btns[1].className = tab === 'expenses' ? 'text-sky-400' : 'text-slate-300';
         }
 
         function openMemo(title, text) {
             document.getElementById('modal-title').innerText = title;
-            document.getElementById('modal-memo').innerHTML = linkify(text);
+            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+            const content = lines.length > 1 
+                ? `<ol class="list-decimal ml-5 space-y-2 text-slate-600">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`
+                : linkify(text);
+            document.getElementById('modal-memo').innerHTML = content;
             document.getElementById('memo-modal').classList.replace('hidden', 'flex');
         }
 
@@ -242,25 +241,21 @@
 
         let expenses = JSON.parse(localStorage.getItem('trip_exp')) || [];
         function addExpense() {
-            const title = document.getElementById('exp-title').value;
-            const amount = parseFloat(document.getElementById('exp-amount').value);
+            const title = document.getElementById('exp-title').value, amount = parseFloat(document.getElementById('exp-amount').value);
             if (!title || !amount) return;
             expenses.unshift({ title, amount, id: Date.now() });
             localStorage.setItem('trip_exp', JSON.stringify(expenses));
             renderExpenses();
-            document.getElementById('exp-title').value = '';
-            document.getElementById('exp-amount').value = '';
+            document.getElementById('exp-title').value = ''; document.getElementById('exp-amount').value = '';
         }
 
         function renderExpenses() {
-            const list = document.getElementById('expense-list');
-            let total = 0;
+            const list = document.getElementById('expense-list'); let total = 0;
             list.innerHTML = '';
             expenses.forEach(e => {
                 total += e.amount;
                 list.innerHTML += `<div class="bg-white p-4 rounded-3xl flex justify-between items-center shadow-sm">
-                    <span class="font-bold text-slate-700">${e.title}</span>
-                    <span class="font-black text-sky-500">¥${e.amount}</span>
+                    <span class="font-bold text-slate-700">${e.title}</span><span class="font-black text-sky-500">¥${e.amount}</span>
                 </div>`;
             });
             document.getElementById('total-expense').innerText = `¥ ${total.toLocaleString()}`;
@@ -270,18 +265,14 @@
             const container = document.getElementById('snow-container');
             for (let i = 0; i < 20; i++) {
                 const snow = document.createElement('div');
-                snow.innerHTML = '❄';
-                snow.className = 'snowflake';
+                snow.innerHTML = '❄'; snow.className = 'snowflake';
                 snow.style.left = Math.random() * 100 + 'vw';
                 snow.style.animationDuration = Math.random() * 3 + 2 + 's';
                 container.appendChild(snow);
             }
         }
 
-        window.onload = () => {
-            fetchTravelData();
-            updateWeatherByGPS();
-        };
+        window.onload = () => { fetchTravelData(); updateWeatherByGPS(); };
     </script>
 </body>
 </html>
