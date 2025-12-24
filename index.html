@@ -41,7 +41,7 @@
         <section class="px-5 mt-4">
             <div id="weather-box" class="glass-card rounded-[2rem] p-5 flex items-center justify-between shadow-sm border border-white/60">
                 <div class="flex items-center gap-4">
-                    <div id="weather-icon" class="text-4xl"><i class="fas fa-snowflake text-sky-300"></i></div>
+                    <div id="weather-icon" class="text-4xl"><i class="fas fa-location-arrow text-sky-300 animate-pulse"></i></div>
                     <div>
                         <h4 id="weather-location" class="font-black text-slate-700 text-lg">定位中...</h4>
                         <p id="weather-desc" class="text-slate-500 text-xs font-bold">請開啟 GPS</p>
@@ -91,6 +91,7 @@
     </footer>
 
     <script>
+        // 請確保此處為您最新的 GAS 部署網址
         const apiUrl = "https://script.google.com/a/macros/mail3.hwsh.tc.edu.tw/s/AKfycbyn4CPX5ob1SuNsJ9a2d-PUXmfabbmGleyNgMZQijPgZrpqilEYReg1LwDDZuDc3BTP/exec";
         
         let travelData = {};
@@ -124,12 +125,14 @@
                 const res = await fetch(apiUrl + "?t=" + Date.now());
                 travelData = await res.json();
                 if (travelData.error) throw new Error(travelData.error);
+                
+                // 成功抓取資料後關閉載入畫面
                 document.getElementById('loading-screen').style.display = 'none';
                 renderSchedule();
                 renderExpenses();
                 createSnow();
             } catch (e) {
-                document.getElementById('loading-text').innerHTML = "讀取失敗，請確認 GAS 權限設定為「所有人」。";
+                document.getElementById('loading-text').innerHTML = "資料同步失敗<br><small>請確認 GAS 權限設為「所有人」</small>";
             }
         }
 
@@ -147,3 +150,101 @@
                 btn.onclick = () => {
                     document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
+                    showDay(d.day);
+                };
+                tabs.appendChild(btn);
+
+                const div = document.createElement('div');
+                div.id = `day-sec-${d.day}`;
+                div.className = `day-section ${i === 0 ? '' : 'hidden'}`;
+                
+                // 渲染包含圖片的行程方塊
+                let html = '';
+                d.items.forEach((item) => {
+                    const encodedMemo = encodeURIComponent(item.memo || "");
+                    html += `
+                        <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm animate-fade-in">
+                            <div class="img-container">
+                                <img src="${item.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">
+                                <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
+                                    <i class="far fa-clock mr-1"></i>${item.time}
+                                </div>
+                            </div>
+                            <div class="p-5">
+                                <h3 class="font-black text-lg text-slate-700 mb-2">${item.title}</h3>
+                                <div class="text-slate-500 text-sm leading-relaxed mb-4">${formatMultiLines(item.desc)}</div>
+                                <div class="flex gap-2">
+                                    <button onclick="openMemo('${item.title}', '${encodedMemo}')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl text-[10px] font-bold active:bg-slate-200 transition">筆記</button>
+                                    <a href="${item.map}" target="_blank" class="flex-1 bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center shadow-md flex items-center justify-center">導航</a>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                div.innerHTML = html;
+                container.appendChild(div);
+            });
+        }
+
+        function showDay(d) {
+            document.querySelectorAll('.day-section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`day-sec-${d}`).classList.remove('hidden');
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById('btn-schedule').className = tab === 'schedule' ? 'text-sky-400' : 'text-slate-300';
+            document.getElementById('btn-expenses').className = tab === 'expenses' ? 'text-sky-400' : 'text-slate-300';
+        }
+
+        function openMemo(title, encodedMemo) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-memo-content').innerHTML = formatMultiLines(decodeURIComponent(encodedMemo));
+            document.getElementById('memo-modal').classList.replace('hidden', 'flex');
+        }
+        function closeMemo() { document.getElementById('memo-modal').classList.replace('flex', 'hidden'); }
+
+        // 記帳邏輯
+        let expenses = JSON.parse(localStorage.getItem('trip_exp')) || [];
+        function addExpense() {
+            const t = document.getElementById('exp-title').value, a = parseFloat(document.getElementById('exp-amount').value);
+            if (!t || isNaN(a)) return;
+            expenses.unshift({ title: t, amount: a, id: Date.now() });
+            saveAndRender();
+            document.getElementById('exp-title').value = ''; document.getElementById('exp-amount').value = '';
+        }
+        function deleteExpense(id) {
+            if (confirm("確定刪除這筆支出嗎？")) { expenses = expenses.filter(e => e.id !== id); saveAndRender(); }
+        }
+        function saveAndRender() { localStorage.setItem('trip_exp', JSON.stringify(expenses)); renderExpenses(); }
+        function renderExpenses() {
+            const list = document.getElementById('expense-list'); let total = 0;
+            list.innerHTML = expenses.length ? '' : '<p class="text-center text-slate-400 py-10 text-sm">尚未有支出紀錄</p>';
+            expenses.forEach(e => {
+                total += e.amount;
+                list.innerHTML += `<div class="bg-white p-4 rounded-3xl flex justify-between items-center shadow-sm">
+                    <span class="font-bold text-slate-700">${e.title}</span>
+                    <div class="flex items-center gap-4">
+                        <span class="font-black text-sky-500">¥${e.amount.toLocaleString()}</span>
+                        <button onclick="deleteExpense(${e.id})" class="text-rose-300 p-2"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('total-expense').innerText = `¥ ${total.toLocaleString()}`;
+        }
+
+        function createSnow() {
+            const container = document.getElementById('snow-container');
+            for (let i = 0; i < 20; i++) {
+                const snow = document.createElement('div');
+                snow.innerHTML = '❄'; snow.className = 'snowflake';
+                snow.style.left = Math.random() * 100 + 'vw';
+                snow.style.animationDuration = Math.random() * 3 + 2 + 's';
+                container.appendChild(snow);
+            }
+        }
+
+        window.onload = () => { fetchTravelData(); updateWeatherByGPS(); };
+    </script>
+</body>
+</html>
