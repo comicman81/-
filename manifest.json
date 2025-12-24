@@ -1,0 +1,24 @@
+{
+  "short_name": "只見線之旅",
+  "name": "冬季只見線之旅手冊",
+  "description": "2024 冬季只見線旅遊行程、進度追蹤與公積金記帳工具",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2934/2934751.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2934/2934751.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "index.html",
+  "display": "standalone",
+  "scope": "./",
+  "background_color": "#eff6ff",
+  "theme_color": "#38bdf8",
+  "lang": "zh-TW"
+}
