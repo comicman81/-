@@ -7,7 +7,7 @@
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#38bdf8">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2934/2934751.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -19,16 +19,10 @@
         @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
         .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.6); transition: all 0.3s; }
         .day-btn.active { background-color: #38bdf8; color: white; transform: scale(1.05); box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4); }
-        .memo-link { color: #38bdf8; text-decoration: underline; font-weight: bold; word-break: break-all; }
         #loading-screen { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .img-container { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #e2e8f0; }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* 行程打卡樣式 */
-        .item-completed { opacity: 0.6; filter: grayscale(0.3); transform: scale(0.98); }
-        .check-btn { transition: transform 0.2s; }
-        .check-btn:active { transform: scale(1.2); }
+        .item-completed { opacity: 0.6; filter: grayscale(0.4); transform: scale(0.98); }
+        .memo-link { color: #38bdf8; text-decoration: underline; font-weight: bold; word-break: break-all; }
     </style>
 </head>
 <body class="pb-24">
@@ -47,14 +41,14 @@
         </div>
     </header>
 
-    <main id="app-content" class="relative z-10">
+    <main id="app-content">
         <section class="px-5 mt-4">
-            <div id="weather-box" class="glass-card rounded-[2rem] p-5 flex items-center justify-between shadow-sm border border-white/60">
+            <div id="weather-box" class="glass-card rounded-[2rem] p-5 flex items-center justify-between shadow-sm">
                 <div class="flex items-center gap-4">
-                    <div id="weather-icon" class="text-4xl text-sky-300"><i class="fas fa-cloud-sun-rain animate-pulse"></i></div>
+                    <div id="weather-icon" class="text-4xl text-sky-300"><i class="fas fa-cloud-meatball"></i></div>
                     <div>
                         <h4 id="weather-location" class="font-black text-slate-700 text-lg">定位中...</h4>
-                        <p id="weather-desc" class="text-slate-500 text-xs font-bold">請開啟 GPS</p>
+                        <p id="weather-desc" class="text-slate-500 text-xs font-bold">讀取中</p>
                     </div>
                 </div>
                 <div class="text-right">
@@ -71,7 +65,7 @@
 
         <section id="tab-expenses" class="tab-content hidden px-5 py-6">
             <div class="bg-gradient-to-r from-sky-400 to-blue-400 rounded-[2rem] p-6 shadow-lg text-white text-center mb-8">
-                <p class="text-blue-100 text-sm font-bold mb-1">公積金支出總計</p>
+                <p class="text-blue-100 text-sm font-bold mb-1">公積金餘額/支出</p>
                 <h2 id="total-expense" class="text-4xl font-black">¥ 0</h2>
             </div>
             <div class="glass-card rounded-[2rem] p-5 mb-6">
@@ -86,12 +80,10 @@
     </main>
 
     <div id="memo-modal" class="fixed inset-0 bg-slate-900/40 z-[100] hidden items-center justify-center p-6 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl p-8 relative">
-            <h3 id="modal-title" class="text-2xl font-black text-slate-700 mb-4 text-center border-b pb-2"></h3>
-            <div class="bg-slate-50 rounded-2xl p-4 text-sm text-slate-600 leading-7 max-h-60 overflow-y-auto">
-                <div id="modal-memo-content"></div>
-            </div>
-            <button onclick="closeMemo()" class="mt-6 w-full bg-slate-800 text-white py-4 rounded-2xl font-bold transition">關閉</button>
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 relative">
+            <h3 id="modal-title" class="text-2xl font-black text-slate-700 mb-4 border-b pb-2"></h3>
+            <div id="modal-memo-content" class="bg-slate-50 rounded-2xl p-4 text-sm text-slate-600 leading-7 max-h-60 overflow-y-auto"></div>
+            <button onclick="closeMemo()" class="mt-6 w-full bg-slate-800 text-white py-4 rounded-2xl font-bold">關閉</button>
         </div>
     </div>
 
@@ -101,14 +93,12 @@
     </footer>
 
     <script>
-        // --- 設定與初始化 ---
         const apiUrl = "https://script.google.com/a/macros/mail3.hwsh.tc.edu.tw/s/AKfycbyn4CPX5ob1SuNsJ9a2d-PUXmfabbmGleyNgMZQijPgZrpqilEYReg1LwDDZuDc3BTP/exec";
         
         let travelData = {};
-        // 進度追蹤儲存在本地，讓每個人記錄自己的進度
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
 
-        // 格式化時間，修正試算表傳出的 1899 年日期格式
+        // 時間格式修正
         function formatTime(timeStr) {
             if (!timeStr) return "--:--";
             if (typeof timeStr === 'string' && timeStr.includes('T')) {
@@ -118,20 +108,31 @@
             return timeStr;
         }
 
-        // 行程打卡切換
+        // 行程打卡
         function toggleProgress(itemId) {
             progress[itemId] = !progress[itemId];
             localStorage.setItem('trip_progress', JSON.stringify(progress));
             renderSchedule();
         }
 
-        // 開啟 GO 叫車 APP
+        // --- 修正後的 GO APP 喚起功能 ---
         function openGoApp() {
-            window.location.href = "goapp://";
-            setTimeout(() => { if (document.visibilityState === 'visible') window.open("https://go.mo-t.com/", "_blank"); }, 1200);
+            // GO APP 官方 URL Scheme
+            const goAppScheme = "jp.go.taxiapp://";
+            const webFallback = "https://go.mo-t.com/";
+
+            // 嘗試打開 APP
+            window.location.href = goAppScheme;
+
+            // 如果一段時間後沒有跳轉（代表沒裝 APP），則跳轉網頁
+            const start = Date.now();
+            setTimeout(() => {
+                if (Date.now() - start < 2000) {
+                    window.open(webFallback, "_blank");
+                }
+            }, 1500);
         }
 
-        // 文字處理：網址自動連結與多行格式化
         function linkify(text) {
             const urlRegex = /(https?:\/\/[^\s]+)/g;
             return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" class="memo-link">${url}</a>`);
@@ -143,36 +144,32 @@
             return lines.length <= 1 ? linkify(text) : `<ol class="list-decimal ml-5 space-y-1">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`;
         }
 
-        // 天氣 API
         async function updateWeatherByGPS() {
             if (!navigator.geolocation) return;
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 try {
                     const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current=temperature_2m&daily=precipitation_probability_max&timezone=auto`);
                     const data = await res.json();
-                    document.getElementById('weather-location').innerText = "當地天氣";
+                    document.getElementById('weather-location').innerText = "目前位置";
                     document.getElementById('weather-temp').innerText = Math.round(data.current.temperature_2m) + "°C";
                     document.getElementById('weather-rain').innerText = "降雨 " + data.daily.precipitation_probability_max[0] + "%";
-                } catch (e) { console.error("天氣讀取失敗", e); }
+                } catch (e) { console.error(e); }
             });
         }
 
-        // 抓取資料
         async function fetchTravelData() {
             try {
                 const res = await fetch(apiUrl + "?t=" + Date.now());
                 travelData = await res.json();
-                if (travelData.error) throw new Error(travelData.error);
                 document.getElementById('loading-screen').style.display = 'none';
                 renderSchedule();
                 renderExpenses();
                 createSnow();
             } catch (e) {
-                document.getElementById('loading-text').innerHTML = "資料同步失敗<br><small>請確認 GAS 權限或網路連接</small>";
+                document.getElementById('loading-text').innerHTML = "資料同步失敗";
             }
         }
 
-        // 渲染行程
         function renderSchedule() {
             if (!travelData.days) return;
             document.getElementById('trip-title').innerText = travelData.title;
@@ -202,13 +199,13 @@
                     const encodedMemo = encodeURIComponent(item.memo || "");
                     
                     html += `
-                        <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm animate-fade-in ${isDone ? 'item-completed' : ''}">
+                        <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
                             <div class="img-container">
                                 <img src="${item.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">
                                 <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
                                     <i class="far fa-clock mr-1"></i>${formatTime(item.time)}
                                 </div>
-                                <button onclick="toggleProgress('${itemId}')" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center check-btn">
+                                <button onclick="toggleProgress('${itemId}')" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center">
                                     ${isDone ? '✅' : '○'}
                                 </button>
                             </div>
@@ -218,7 +215,7 @@
                                 <div class="grid grid-cols-3 gap-2">
                                     <button onclick="openMemo('${item.title}', '${encodedMemo}')" class="bg-slate-100 text-slate-600 py-3 rounded-xl text-[10px] font-bold">筆記</button>
                                     <button onclick="openGoApp()" class="bg-black text-white py-3 rounded-xl text-[10px] font-bold flex items-center justify-center">GO 叫車</button>
-                                    <a href="${item.map}" target="_blank" class="bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center flex items-center justify-center shadow-md">導航</a>
+                                    <a href="${item.map}" target="_blank" class="bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center flex items-center justify-center">導航</a>
                                 </div>
                             </div>
                         </div>`;
@@ -247,45 +244,24 @@
         }
         function closeMemo() { document.getElementById('memo-modal').classList.replace('flex', 'hidden'); }
 
-        // --- 記帳邏輯 ---
         let expenses = JSON.parse(localStorage.getItem('trip_exp')) || [];
-
         async function addExpense() {
-            const t = document.getElementById('exp-title').value;
-            const a = parseFloat(document.getElementById('exp-amount').value);
+            const t = document.getElementById('exp-title').value, a = parseFloat(document.getElementById('exp-amount').value);
             if (!t || isNaN(a)) return;
-
             const btn = document.getElementById('add-exp-btn');
             btn.disabled = true; btn.innerText = "同步中...";
-
             try {
-                // 嘗試同步到 GAS (多人同步)
-                await fetch(apiUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({ action: 'addExpense', title: t, amount: a, user: 'User' })
-                });
-                
+                await fetch(apiUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'addExpense', title: t, amount: a, user: 'User' }) });
                 expenses.unshift({ title: t, amount: a, id: Date.now() });
                 saveAndRender();
-                document.getElementById('exp-title').value = ''; 
-                document.getElementById('exp-amount').value = '';
-            } catch (e) {
-                alert("網路同步失敗，支出已暫存於本機。");
-                expenses.unshift({ title: t, amount: a, id: Date.now() });
-                saveAndRender();
-            } finally {
-                btn.disabled = false; btn.innerText = "新增";
-            }
+                document.getElementById('exp-title').value = ''; document.getElementById('exp-amount').value = '';
+            } catch (e) { alert("同步失敗"); } finally { btn.disabled = false; btn.innerText = "新增"; }
         }
-        
-        function deleteExpense(id) {
-            if (confirm("確定刪除這筆支出嗎？")) { expenses = expenses.filter(e => e.id !== id); saveAndRender(); }
-        }
+        function deleteExpense(id) { if (confirm("刪除？")) { expenses = expenses.filter(e => e.id !== id); saveAndRender(); } }
         function saveAndRender() { localStorage.setItem('trip_exp', JSON.stringify(expenses)); renderExpenses(); }
         function renderExpenses() {
             const list = document.getElementById('expense-list'); let total = 0;
-            list.innerHTML = expenses.length ? '' : '<p class="text-center text-slate-400 py-10 text-sm">目前無支出紀錄</p>';
+            list.innerHTML = expenses.length ? '' : '<p class="text-center text-slate-400 py-10">尚無紀錄</p>';
             expenses.forEach(e => {
                 total += e.amount;
                 list.innerHTML += `<div class="bg-white p-4 rounded-3xl flex justify-between items-center shadow-sm">
@@ -299,7 +275,6 @@
             document.getElementById('total-expense').innerText = `¥ ${total.toLocaleString()}`;
         }
 
-        // 下雪特效
         function createSnow() {
             const container = document.getElementById('snow-container');
             if (container.children.length > 0) return;
@@ -308,7 +283,6 @@
                 snow.innerHTML = '❄'; snow.className = 'snowflake';
                 snow.style.left = Math.random() * 100 + 'vw';
                 snow.style.animationDuration = Math.random() * 3 + 2 + 's';
-                snow.style.opacity = Math.random();
                 container.appendChild(snow);
             }
         }
