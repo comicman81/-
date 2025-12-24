@@ -62,4 +62,23 @@
         <section id="tab-expenses" class="tab-content hidden px-5 py-6">
             <div class="bg-gradient-to-r from-sky-400 to-blue-400 rounded-[2rem] p-6 shadow-lg text-white text-center mb-8">
                 <p class="text-blue-100 text-sm font-bold mb-1">公積金總支出</p>
-                <h2 id="total-expense
+                <h2 id="total-expense" class="text-4xl font-black">¥ 0</h2>
+            </div>
+            <div class="glass-card rounded-[2rem] p-5 mb-6">
+                <input id="exp-title" type="text" placeholder="品項名稱🍱" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm mb-3 outline-none">
+                <div class="flex gap-3">
+                    <input id="exp-amount" type="number" placeholder="¥ 金額" class="w-2/3 bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none">
+                    <button onclick="addExpense()" class="w-1/3 bg-rose-400 text-white rounded-2xl font-bold active:scale-95 transition">新增</button>
+                </div>
+            </div>
+            <div id="expense-list" class="space-y-3"></div>
+        </section>
+    </main>
+
+    <div id="memo-modal" class="fixed inset-0 bg-slate-900/40 z-[100] hidden items-center justify-center p-6 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl p-8 relative">
+            <h3 id="modal-title" class="text-2xl font-black text-slate-700 mb-4 text-center border-b pb-2"></h3>
+            <div class="bg-slate-50 rounded-2xl p-4 text-sm text-slate-600 leading-7 max-h-60 overflow-y-auto">
+                <div id="modal-memo-content"></div>
+            </div>
+            <button onclick="closeMemo()" class="mt-6 w-full bg-slate-800 text
