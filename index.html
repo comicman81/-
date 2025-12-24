@@ -40,9 +40,7 @@
         <section class="px-5 mt-4">
             <div id="weather-box" class="glass-card rounded-[2rem] p-5 flex items-center justify-between shadow-sm border border-white/60">
                 <div class="flex items-center gap-4">
-                    <div id="weather-icon" class="text-4xl">
-                        <i class="fas fa-location-arrow text-sky-300 animate-pulse"></i>
-                    </div>
+                    <div id="weather-icon" class="text-4xl"><i class="fas fa-location-arrow text-sky-300 animate-pulse"></i></div>
                     <div>
                         <h4 id="weather-location" class="font-black text-slate-700 text-lg">定位中...</h4>
                         <p id="weather-desc" class="text-slate-500 text-xs font-bold">請允許 GPS 存取</p>
@@ -66,9 +64,9 @@
                 <h2 id="total-expense" class="text-4xl font-black">¥ 0</h2>
             </div>
             <div class="glass-card rounded-[2rem] p-5 mb-6">
-                <input id="exp-title" type="text" placeholder="品項名稱🍱" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm mb-3 outline-none">
+                <input id="exp-title" type="text" placeholder="品項名稱" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm mb-3 outline-none">
                 <div class="flex gap-3">
-                    <input id="exp-amount" type="number" placeholder="¥ 金額" class="w-2/3 bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none">
+                    <input id="exp-amount" type="number" placeholder="金額" class="w-2/3 bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none">
                     <button onclick="addExpense()" class="w-1/3 bg-rose-400 text-white rounded-2xl font-bold active:scale-95 transition">新增</button>
                 </div>
             </div>
@@ -80,7 +78,7 @@
         <div class="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl p-8 relative">
             <h3 id="modal-title" class="text-2xl font-black text-slate-700 mb-4 text-center border-b pb-2"></h3>
             <div class="bg-slate-50 rounded-2xl p-4 text-sm text-slate-600 leading-7 max-h-60 overflow-y-auto">
-                <div id="modal-memo" class="whitespace-pre-wrap"></div>
+                <div id="modal-memo-content"></div>
             </div>
             <button onclick="closeMemo()" class="mt-6 w-full bg-slate-800 text-white py-4 rounded-2xl font-bold active:scale-95 transition">關閉</button>
         </div>
@@ -93,7 +91,6 @@
 
     <script>
         let travelData = {};
-        // 請更換為您最新的 Google Apps Script 網址
         const apiUrl = "https://script.google.com/macros/s/AKfycbzDB3nOB_gZuJsnpwAX7c_3gzomqmnsZmm9FKXmvybZ4UmW_218h-V-o3N9M5v6uww06w/exec";
 
         function linkify(text) {
@@ -101,63 +98,70 @@
             return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" class="memo-link">${url}</a>`);
         }
 
-        // 自動編號處理函數
-        function formatAsList(text) {
-            if (!text) return '尚無內容';
-            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
-            if (lines.length <= 1) return text; 
-            return `<ol class="list-decimal ml-5 space-y-1">${lines.map(line => `<li>${line}</li>`).join('')}</ol>`;
+        // 呼叫手機 GO APP
+        function openGoApp() {
+            const goAppUrl = "goapp://app";
+            const downloadUrl = "https://go.mo-t.com/";
+            window.location.href = goAppUrl;
+            setTimeout(() => {
+                if (document.hasFocus()) { window.open(downloadUrl, '_blank'); }
+            }, 1000);
         }
 
-        // 天氣 GPS 邏輯
-        async function updateWeatherByGPS() {
-            const descEl = document.getElementById('weather-desc');
-            const locEl = document.getElementById('weather-location');
-            if (!navigator.geolocation) return;
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
+        // 多點資料格式化 (處理 \n 為清單)
+        function formatMultiLines(text) {
+            if (!text) return '尚無內容';
+            const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            if (lines.length <= 1) return linkify(text);
+            return `<ol class="list-decimal ml-5 space-y-1">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`;
+        }
+
+        // 時間格式精準修正
+        function formatTimeDisplay(timeStr) {
+            if (!timeStr) return "--:--";
+            // 如果是長日期字串 (例如包含 GMT)
+            if (timeStr.length > 8 && timeStr.includes(" ")) {
                 try {
-                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=precipitation_probability_max&timezone=auto`;
-                    const response = await fetch(url);
-                    const data = await response.json();
-                    const code = data.current.weather_code;
-                    const temp = Math.round(data.current.temperature_2m);
-                    const rainProb = data.daily.precipitation_probability_max[0];
-                    locEl.innerText = "目前位置天氣";
-                    document.getElementById('weather-temp').innerText = temp + "°C";
-                    document.getElementById('weather-rain').innerText = "降雨機率 " + rainProb + "%";
-                    setWeatherStatus(code);
-                } catch (e) { descEl.innerText = "讀取失敗"; }
-            }, (err) => { 
-                descEl.innerText = "請開啟 GPS"; 
-                locEl.innerText = "定位關閉";
+                    const d = new Date(timeStr);
+                    // 轉為日本時區 HH:mm
+                    return d.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+                } catch(e) { return timeStr.substring(0, 5); }
+            }
+            return timeStr.substring(0, 5);
+        }
+
+        // 天氣 GPS
+        async function updateWeatherByGPS() {
+            if (!navigator.geolocation) return;
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current=temperature_2m,weather_code&daily=precipitation_probability_max&timezone=auto`);
+                    const data = await res.json();
+                    document.getElementById('weather-location').innerText = "目前位置";
+                    document.getElementById('weather-temp').innerText = Math.round(data.current.temperature_2m) + "°C";
+                    document.getElementById('weather-rain').innerText = "降雨機率 " + data.daily.precipitation_probability_max[0] + "%";
+                    setWeatherStatus(data.current.weather_code);
+                } catch (e) { console.error(e); }
             });
         }
 
         function setWeatherStatus(code) {
-            const iconEl = document.getElementById('weather-icon');
-            const descEl = document.getElementById('weather-desc');
             let icon = '<i class="fas fa-cloud text-sky-300"></i>', desc = "多雲";
             if (code === 0) { icon = '<i class="fas fa-sun text-orange-400"></i>'; desc = "晴朗"; }
-            else if (code >= 1 && code <= 3) { icon = '<i class="fas fa-cloud-sun text-sky-400"></i>'; desc = "多雲"; }
-            else if (code >= 71 && code <= 77) { icon = '<i class="fas fa-snowflake text-blue-200 animate-bounce"></i>'; desc = "降雪 ❄️"; }
-            else if (code >= 51 && code <= 67) { icon = '<i class="fas fa-cloud-showers-heavy text-blue-400"></i>'; desc = "有雨"; }
-            iconEl.innerHTML = icon; descEl.innerText = desc;
+            else if (code >= 71 && code <= 77) { icon = '<i class="fas fa-snowflake text-blue-200 animate-bounce"></i>'; desc = "正在下雪"; }
+            document.getElementById('weather-icon').innerHTML = icon;
+            document.getElementById('weather-desc').innerText = desc;
         }
 
         async function fetchTravelData() {
             try {
-                const response = await fetch(apiUrl + "?t=" + new Date().getTime());
-                travelData = await response.json();
-                if (travelData.error) throw new Error(travelData.error);
+                const res = await fetch(apiUrl + "?t=" + Date.now());
+                travelData = await res.json();
                 document.getElementById('loading-screen').style.display = 'none';
                 renderSchedule();
                 renderExpenses();
                 createSnow();
-            } catch (error) {
-                document.getElementById('loading-text').innerHTML = "讀取失敗，請確認 API！<br><small>" + error.message + "</small>";
-            }
+            } catch (e) { document.getElementById('loading-text').innerText = "連線失敗"; }
         }
 
         function renderSchedule() {
@@ -173,44 +177,44 @@
                 btn.innerHTML = `<span class="block text-[10px] opacity-60">Day ${d.day}</span>${d.date}`;
                 btn.onclick = () => {
                     document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active'); showDay(d.day);
+                    btn.classList.add('active');
+                    showDay(d.day);
                 };
                 tabs.appendChild(btn);
 
                 const div = document.createElement('div');
                 div.id = `day-sec-${d.day}`;
                 div.className = `day-section ${i === 0 ? '' : 'hidden'}`;
+                
                 let html = '';
-                d.items.forEach(item => {
-                    let displayTime = item.time || "";
-                    if (displayTime.includes(":") && displayTime.length > 5) {
-                        const timePart = displayTime.split(" ").find(p => p.includes(":"));
-                        if (timePart) displayTime = timePart.substring(0, 5); 
-                    }
+                d.items.forEach((item, idx) => {
+                    // 安全處理 memo 避免引號錯誤
+                    const safeMemo = encodeURIComponent(item.memo || "");
                     html += `
                         <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm">
                             <div class="img-container">
-                                <img src="${item.img}" class="w-full h-full object-cover" loading="lazy">
+                                <img src="${item.img}" class="w-full h-full object-cover">
                                 <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
-                                    <i class="far fa-clock mr-1"></i>${displayTime}
+                                    <i class="far fa-clock mr-1"></i>${formatTimeDisplay(item.time)}
                                 </div>
                             </div>
                             <div class="p-5">
-                                <h3 class="font-black text-lg text-slate-700 mb-2 tracking-tight">${item.title}</h3>
+                                <h3 class="font-black text-lg text-slate-700 mb-2">${item.title}</h3>
                                 <div class="text-slate-500 text-sm leading-relaxed mb-4">
-                                    ${formatAsList(item.desc)}
+                                    ${formatMultiLines(item.desc)}
                                 </div>
                                 <div class="flex gap-2">
-                                    <button onclick="openMemo('${item.title}', '${item.memo.replace(/'/g, "\\'")}')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl text-[10px] font-bold active:bg-slate-200 transition">筆記</button>
-                                    <a href="${item.map}" target="_blank" class="flex-1 bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center shadow-md active:bg-sky-500 transition">導航</a>
-                                    <a href="goapp://app" class="flex-1 bg-black text-white py-3 rounded-xl text-[10px] font-bold text-center shadow-md active:opacity-80 transition flex items-center justify-center gap-1">
+                                    <button onclick="openMemo('${item.title}', '${safeMemo}')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl text-[10px] font-bold active:bg-slate-200 transition">筆記</button>
+                                    <a href="${item.map}" target="_blank" class="flex-1 bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center shadow-md flex items-center justify-center">導航</a>
+                                    <button onclick="openGoApp()" class="flex-1 bg-black text-white py-3 rounded-xl text-[10px] font-bold shadow-md flex items-center justify-center gap-1">
                                         <i class="fas fa-taxi text-yellow-400"></i> GO
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </div>`;
                 });
-                div.innerHTML = html; container.appendChild(div);
+                div.innerHTML = html;
+                container.appendChild(div);
             });
         }
 
@@ -227,23 +231,21 @@
             btns[1].className = tab === 'expenses' ? 'text-sky-400' : 'text-slate-300';
         }
 
-        function openMemo(title, text) {
+        function openMemo(title, encodedMemo) {
+            const memo = decodeURIComponent(encodedMemo);
             document.getElementById('modal-title').innerText = title;
-            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
-            const content = lines.length > 1 
-                ? `<ol class="list-decimal ml-5 space-y-2 text-slate-600">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`
-                : linkify(text);
-            document.getElementById('modal-memo').innerHTML = content;
+            document.getElementById('modal-memo-content').innerHTML = formatMultiLines(memo);
             document.getElementById('memo-modal').classList.replace('hidden', 'flex');
         }
 
         function closeMemo() { document.getElementById('memo-modal').classList.replace('flex', 'hidden'); }
 
+        // 記帳與雪花... (其餘邏輯維持)
         let expenses = JSON.parse(localStorage.getItem('trip_exp')) || [];
         function addExpense() {
-            const title = document.getElementById('exp-title').value, amount = parseFloat(document.getElementById('exp-amount').value);
-            if (!title || !amount) return;
-            expenses.unshift({ title, amount, id: Date.now() });
+            const t = document.getElementById('exp-title').value, a = parseFloat(document.getElementById('exp-amount').value);
+            if (!t || !a) return;
+            expenses.unshift({ title: t, amount: a, id: Date.now() });
             localStorage.setItem('trip_exp', JSON.stringify(expenses));
             renderExpenses();
             document.getElementById('exp-title').value = ''; document.getElementById('exp-amount').value = '';
