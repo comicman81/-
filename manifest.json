@@ -3,14 +3,20 @@
   "name": "冬季只見線之旅手冊",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2334/2334855.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=3",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=3",
+      "type": "image/png",
+      "sizes": "192x192"
     }
   ],
-  "start_url": "index.html",
+  "start_url": "index.html?v=3",
   "display": "standalone",
   "background_color": "#eff6ff",
-  "theme_color": "#38bdf8"
+  "theme_color": "#38bdf8",
+  "orientation": "portrait"
 }
