@@ -115,22 +115,19 @@
             renderSchedule();
         }
 
-        // --- 優化後的 GO 叫車邏輯 ---
         function openGoApp() {
             const goAppScheme = "jp.go.taxiapp://";
             const webUrl = "https://go.mo-t.com/";
             let hasOpened = false;
 
-            // 使用背景點擊法喚起 APP
             const link = document.createElement('a');
             link.href = goAppScheme;
             link.click();
 
             window.onblur = function() {
-                hasOpened = true; // 視窗失去焦點代表 APP 被開啟
+                hasOpened = true; 
             };
 
-            // 1.5 秒後如果還留在網頁，代表沒裝 APP，自動跳轉網頁版
             setTimeout(() => {
                 if (!hasOpened && document.visibilityState === 'visible') {
                     window.location.href = webUrl;
@@ -185,7 +182,8 @@
             travelData.days.forEach((d, i) => {
                 const btn = document.createElement('button');
                 btn.className = `day-btn flex-shrink-0 px-5 py-3 rounded-[1.5rem] text-sm font-bold bg-white text-slate-400 border border-slate-100 ${i === 0 ? 'active' : ''}`;
-                btn.innerHTML = `<span class="block text-[10px] opacity-60">Day ${d.day}</span>${d.date}`;
+                // 修改 Day 文字大小為 text-sm 並與日期並排
+                btn.innerHTML = `<span class="text-sm mr-1 opacity-60">Day ${d.day}</span><span>${d.date}</span>`;
                 btn.onclick = () => {
                     document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
