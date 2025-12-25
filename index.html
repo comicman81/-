@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
-    <link rel="manifest" href="manifest.json?v=5">
+    <link rel="manifest" href="manifest.json?v=6">
     <meta name="theme-color" content="#38bdf8">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=5">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=6">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -22,6 +22,7 @@
         #loading-screen { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .img-container { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #e2e8f0; }
         .item-completed { opacity: 0.6; filter: grayscale(0.4); transform: scale(0.98); }
+        .memo-link { color: #38bdf8; text-decoration: underline; font-weight: bold; }
     </style>
 </head>
 <body class="pb-24">
@@ -75,14 +76,28 @@
         let travelData = {};
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
 
-        // --- 核心修正：優化解析邏輯 ---
-        function askGemini(title, mapUrl) {
-            let placeKey = title; // 預設使用標題
+        // 輔助函式：將網址轉換為可點擊連結
+        function linkify(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" class="memo-link">${url}</a>`);
+        }
+
+        // 輔助函式：處理筆記換行與自動加序號
+        function formatMultiLines(text) {
+            if (!text) return '尚無筆記';
+            // 以換行符號分割，並過濾掉空行
+            const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            if (lines.length <= 1) return linkify(text);
             
+            // 使用 <ol> 標籤實現自動數字序號 (1. 2. 3.)
+            return `<ol class="list-decimal ml-5 space-y-2">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`;
+        }
+
+        function askGemini(title, mapUrl) {
+            let placeKey = title;
             try {
                 if (mapUrl && mapUrl.includes('google.com')) {
                     if (mapUrl.includes('/place/')) {
-                        // 提取地標名並處理 URL 編碼
                         const part = mapUrl.split('/place/')[1];
                         placeKey = decodeURIComponent(part.split('/')[0]).replace(/\+/g, ' ');
                     } else if (mapUrl.includes('q=')) {
@@ -90,12 +105,10 @@
                         placeKey = urlObj.searchParams.get('q');
                     }
                 }
-            } catch (e) { console.log("解析網址失敗，採用標題"); }
+            } catch (e) { console.log("解析網址失敗"); }
 
             const prompt = `請針對「${placeKey}」提供約300字的精簡介紹，內容包含：1.歷史文化意義 2.必吃美食建議 3.冬季景觀特色。請直接給出重點，不要有過多綴字。`;
             const geminiUrl = `https://gemini.google.com/app?prompt=${encodeURIComponent(prompt)}`;
-            
-            // 跳轉邏輯
             const win = window.open(geminiUrl, '_blank');
             if (!win) window.location.href = geminiUrl;
         }
@@ -143,7 +156,6 @@
 
             travelData.days.forEach((d, i) => {
                 const btn = document.createElement('button');
-                // 修正：Day 在日期上方
                 btn.className = `day-btn flex-shrink-0 px-6 py-2 rounded-[1.5rem] flex flex-col items-center bg-white text-slate-400 border border-slate-100 ${i === 0 ? 'active' : ''}`;
                 btn.innerHTML = `<span class="text-sm font-bold opacity-70">Day ${d.day}</span><span class="text-sm font-black">${d.date}</span>`;
                 btn.onclick = () => {
@@ -164,7 +176,7 @@
                     html += `
                         <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
                             <div class="img-container">
-                                <img src="${item.img}" class="w-full h-full object-cover">
+                                <img src="${item.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">
                                 <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
                                     <i class="far fa-clock mr-1"></i>${formatTime(item.time)}
                                 </div>
@@ -199,10 +211,13 @@
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById('btn-schedule').className = tab === 'schedule' ? 'text-sky-400' : 'text-slate-300';
+            document.getElementById('btn-expenses').className = tab === 'expenses' ? 'text-sky-400' : 'text-slate-300';
         }
         function openMemo(title, memo) {
             document.getElementById('modal-title').innerText = title;
-            document.getElementById('modal-memo-content').innerText = decodeURIComponent(memo) || '尚無筆記';
+            // 使用優化後的函式渲染內容
+            document.getElementById('modal-memo-content').innerHTML = formatMultiLines(decodeURIComponent(memo));
             document.getElementById('memo-modal').classList.replace('hidden', 'flex');
         }
         function closeMemo() { document.getElementById('memo-modal').classList.replace('flex', 'hidden'); }
