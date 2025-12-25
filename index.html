@@ -4,16 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
-    
-    <link rel="manifest" href="manifest.json?v=9">
+    <link rel="manifest" href="manifest.json?v=10">
     <meta name="theme-color" content="#38bdf8">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=9">
-
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=10">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Zen Maru Gothic', sans-serif; background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 100%); color: #475569; overflow-x: hidden; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         .hide-scroll::-webkit-scrollbar { display: none; }
         .snowflake { position: fixed; top: -10px; color: white; z-index: 0; animation: fall linear infinite; pointer-events: none; }
         @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
@@ -26,17 +25,15 @@
     </style>
 </head>
 <body class="pb-24">
-
     <div id="loading-screen">
         <div class="text-sky-400 text-6xl mb-4 animate-spin"><i class="fas fa-snowflake"></i></div>
         <p id="loading-text" class="text-sky-500 font-bold">同步資料中...</p>
     </div>
-
     <div id="snow-container"></div>
 
     <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 rounded-b-[2rem] shadow-sm border-b border-blue-50">
         <div class="flex justify-between items-center">
-            <h1 id="trip-title" class="text-xl font-black text-sky-500 tracking-wider">冬季只見線之旅 ☃️</h1>
+            <h1 class="text-xl font-black text-sky-500 tracking-wider">冬季只見線之旅 ☃️</h1>
             <div class="bg-blue-50 text-sky-400 w-10 h-10 rounded-full flex items-center justify-center shadow-inner overflow-hidden">
                 <img src="https://cdn-icons-png.flaticon.com/512/2334/2334855.png" class="w-7 h-7 object-contain">
             </div>
@@ -48,13 +45,10 @@
             <nav id="day-tabs" class="flex overflow-x-auto p-4 gap-3 sticky top-[85px] z-40 hide-scroll"></nav>
             <div id="schedule-container" class="px-4 pb-4 space-y-5"></div>
         </section>
-
         <section id="tab-expenses" class="tab-content hidden px-5 py-6">
             <div class="bg-gradient-to-r from-sky-400 to-blue-400 rounded-[2rem] p-6 shadow-lg text-white text-center mb-8">
-                <p class="text-blue-100 text-sm font-bold mb-1">公積金餘額/支出</p>
                 <h2 id="total-expense" class="text-4xl font-black">¥ 0</h2>
             </div>
-            <div id="expense-list" class="space-y-3"></div>
         </section>
     </main>
 
@@ -76,68 +70,38 @@
         let travelData = {};
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
 
-        /**
-         * 處理超連結：同時支援 Markdown [文字](網址) 與純網址偵測
-         */
         function linkify(text) {
             if (!text) return "";
-            // 1. 先處理 Markdown 格式 [文字](網址)
-            let processedText = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, 
-                '<a href="$2" target="_blank" class="memo-link">$1</a>');
-            
-            // 2. 再處理剩下的純網址 (使用 Lookbehind 避開 HTML 標籤內的網址)
+            let processed = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" class="memo-link">$1</a>');
             const urlRegex = /(?<!href="|">)(https?:\/\/[^\s<]+)/g;
-            processedText = processedText.replace(urlRegex, 
-                '<a href="$1" target="_blank" class="memo-link">$1</a>');
-            
-            return processedText;
+            return processed.replace(urlRegex, '<a href="$1" target="_blank" class="memo-link">$1</a>');
         }
 
-        /**
-         * 處理多行筆記與換行
-         */
         function formatMultiLines(text) {
             if (!text || text === "undefined") return '尚無筆記';
             const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-            if (lines.length <= 1) return linkify(text);
-            return `<ol class="list-decimal ml-5 space-y-2">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`;
+            return lines.length <= 1 ? linkify(text) : `<ol class="list-decimal ml-5 space-y-2">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`;
         }
 
+        // AI 導覽自動查詢修正
         function askGemini(title, mapUrl) {
             let placeKey = title;
             try {
                 if (mapUrl && mapUrl.includes('google.com')) {
                     if (mapUrl.includes('/place/')) {
-                        const part = mapUrl.split('/place/')[1];
-                        placeKey = decodeURIComponent(part.split('/')[0]).replace(/\+/g, ' ');
+                        placeKey = decodeURIComponent(mapUrl.split('/place/')[1].split('/')[0]).replace(/\+/g, ' ');
                     } else if (mapUrl.includes('q=')) {
-                        const urlObj = new URL(mapUrl);
-                        placeKey = urlObj.searchParams.get('q');
+                        placeKey = new URL(mapUrl).searchParams.get('q');
                     }
                 }
-            } catch (e) { console.log("解析網址失敗"); }
-
-            const prompt = `請針對「${placeKey}」提供約300字的精簡介紹，內容包含：1.歷史文化意義 2.必吃美食建議 3.冬季景觀特色。請直接給出重點，不要有過多綴字。`;
-            const geminiUrl = `https://gemini.google.com/app?prompt=${encodeURIComponent(prompt)}`;
-            window.open(geminiUrl, '_blank');
+            } catch (e) {}
+            const prompt = `請針對「${placeKey}」提供約400字的精簡介紹。內容包含：1.歷史文化意義 2.冬季特色景觀 3.推薦必買伴手禮。直接給出重點，減少綴字。`;
+            window.open(`https://gemini.google.com/app?prompt=${encodeURIComponent(prompt)}`, '_blank');
         }
 
         function openGoApp() {
-            const goAppScheme = "jp.go.taxiapp://";
-            const webUrl = "https://go.mo-t.com/";
-            let hasOpened = false;
-            const link = document.createElement('a');
-            link.href = goAppScheme;
-            link.click();
-            window.onblur = () => { hasOpened = true; };
-            setTimeout(() => {
-                if (!hasOpened && document.visibilityState === 'visible') window.location.href = webUrl;
-            }, 1500);
-        }
-
-        function formatTime(timeStr) {
-            if (!timeStr) return "--:--";
-            return timeStr;
+            window.location.href = "jp.go.taxiapp://";
+            setTimeout(() => { window.location.href = "https://go.mo-t.com/"; }, 1500);
         }
 
         async function fetchTravelData() {
@@ -146,11 +110,8 @@
                 travelData = await res.json();
                 document.getElementById('loading-screen').style.display = 'none';
                 renderSchedule();
-                renderExpenses();
                 createSnow();
-            } catch (e) {
-                document.getElementById('loading-text').innerText = "同步失敗";
-            }
+            } catch (e) { document.getElementById('loading-text').innerText = "同步失敗"; }
         }
 
         function renderSchedule() {
@@ -158,7 +119,6 @@
             const tabs = document.getElementById('day-tabs');
             const container = document.getElementById('schedule-container');
             tabs.innerHTML = ''; container.innerHTML = '';
-
             travelData.days.forEach((d, dayIdx) => {
                 const btn = document.createElement('button');
                 btn.className = `day-btn flex-shrink-0 px-6 py-2 rounded-[1.5rem] flex flex-col items-center bg-white text-slate-400 border border-slate-100 ${dayIdx === 0 ? 'active' : ''}`;
@@ -169,48 +129,39 @@
                     showDay(d.day);
                 };
                 tabs.appendChild(btn);
-
                 const div = document.createElement('div');
                 div.id = `day-sec-${d.day}`;
                 div.className = `day-section ${dayIdx === 0 ? '' : 'hidden'}`;
-                
                 let html = '';
                 d.items.forEach((item, itemIdx) => {
                     const itemId = `d${d.day}i${itemIdx}`;
                     const isDone = progress[itemId];
-                    // 使用索引值引用資料，解決 Day 5 之後內容過長導致 HTML 語法破碎的問題
-                    html += `
-                        <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
-                            <div class="img-container">
-                                <img src="${item.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">
-                                <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
-                                    <i class="far fa-clock mr-1"></i>${formatTime(item.time)}
-                                </div>
-                                <button onclick="toggleProgress('${itemId}')" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center">
-                                    ${isDone ? '✅' : '○'}
-                                </button>
+                    html += `<div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
+                        <div class="img-container">
+                            <img src="${item.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">
+                            <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
+                                <i class="far fa-clock mr-1"></i>${item.time}
                             </div>
-                            <div class="p-5">
-                                <h3 class="font-black text-lg text-slate-700 mb-3">${item.title}</h3>
-                                <div class="grid grid-cols-2 gap-2 mb-3">
-                                    <button onclick="askGemini('${item.title}', '${item.map}')" class="bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-3 rounded-xl text-[10px] font-bold shadow-md active:scale-95 transition">
-                                        <i class="fas fa-robot mr-1"></i>AI 導覽
-                                    </button>
-                                    <button onclick="openMemoByIndex(${dayIdx}, ${itemIdx})" class="bg-slate-100 text-slate-600 py-3 rounded-xl text-[10px] font-bold">查看筆記</button>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="openGoApp()" class="bg-black text-white py-3 rounded-xl text-[10px] font-bold">GO 叫車</button>
-                                    <a href="${item.map}" target="_blank" class="bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center flex items-center justify-center shadow-sm">開啟導航</a>
-                                </div>
+                            <button onclick="toggleProgress('${itemId}')" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center">${isDone ? '✅' : '○'}</button>
+                        </div>
+                        <div class="p-5">
+                            <h3 class="font-black text-lg text-slate-700 mb-3">${item.title}</h3>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <button onclick="askGemini('${item.title}', '${item.map}')" class="bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-3 rounded-xl text-[10px] font-bold shadow-md transition active:scale-95"><i class="fas fa-robot mr-1"></i>AI 導覽</button>
+                                <button onclick="openMemoByIndex(${dayIdx}, ${itemIdx})" class="bg-slate-100 text-slate-600 py-3 rounded-xl text-[10px] font-bold">查看筆記</button>
                             </div>
-                        </div>`;
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="openGoApp()" class="bg-black text-white py-3 rounded-xl text-[10px] font-bold">GO 叫車</button>
+                                <a href="${item.map}" target="_blank" class="bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center flex items-center justify-center shadow-sm">開啟導航</a>
+                            </div>
+                        </div>
+                    </div>`;
                 });
                 div.innerHTML = html;
                 container.appendChild(div);
             });
         }
 
-        // 核心修正：透過資料陣列索引來讀取筆記，徹底解決特殊符號中斷 HTML 的問題
         function openMemoByIndex(dayIdx, itemIdx) {
             const item = travelData.days[dayIdx].items[itemIdx];
             document.getElementById('modal-title').innerText = item.title;
@@ -230,13 +181,10 @@
             document.getElementById('btn-expenses').className = tab === 'expenses' ? 'text-sky-400' : 'text-slate-300';
         }
 
-        function closeMemo() { 
-            document.getElementById('memo-modal').classList.replace('flex', 'hidden'); 
-        }
+        function closeMemo() { document.getElementById('memo-modal').classList.replace('flex', 'hidden'); }
 
         function createSnow() {
             const container = document.getElementById('snow-container');
-            if (container.children.length > 0) return;
             for (let i = 0; i < 20; i++) {
                 const snow = document.createElement('div');
                 snow.innerHTML = '❄'; snow.className = 'snowflake';
@@ -250,10 +198,6 @@
             progress[itemId] = !progress[itemId];
             localStorage.setItem('trip_progress', JSON.stringify(progress));
             renderSchedule();
-        }
-
-        function renderExpenses() {
-            // 如有支出資料處理需求，可在此擴充
         }
 
         window.onload = () => fetchTravelData();
