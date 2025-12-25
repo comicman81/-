@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
-    <link rel="manifest" href="manifest.json?v=10">
+    
+    <link rel="manifest" href="manifest.json?v=11">
     <meta name="theme-color" content="#38bdf8">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=10">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=11">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Zen Maru Gothic', sans-serif; background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 100%); color: #475569; overflow-x: hidden; }
-        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         .hide-scroll::-webkit-scrollbar { display: none; }
         .snowflake { position: fixed; top: -10px; color: white; z-index: 0; animation: fall linear infinite; pointer-events: none; }
         @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
@@ -25,10 +26,12 @@
     </style>
 </head>
 <body class="pb-24">
+
     <div id="loading-screen">
         <div class="text-sky-400 text-6xl mb-4 animate-spin"><i class="fas fa-snowflake"></i></div>
         <p id="loading-text" class="text-sky-500 font-bold">同步資料中...</p>
     </div>
+
     <div id="snow-container"></div>
 
     <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 rounded-b-[2rem] shadow-sm border-b border-blue-50">
@@ -45,8 +48,10 @@
             <nav id="day-tabs" class="flex overflow-x-auto p-4 gap-3 sticky top-[85px] z-40 hide-scroll"></nav>
             <div id="schedule-container" class="px-4 pb-4 space-y-5"></div>
         </section>
+
         <section id="tab-expenses" class="tab-content hidden px-5 py-6">
             <div class="bg-gradient-to-r from-sky-400 to-blue-400 rounded-[2rem] p-6 shadow-lg text-white text-center mb-8">
+                <p class="text-blue-100 text-sm font-bold mb-1">公積金預算</p>
                 <h2 id="total-expense" class="text-4xl font-black">¥ 0</h2>
             </div>
         </section>
@@ -66,7 +71,7 @@
     </footer>
 
     <script>
-        const apiUrl = "https://script.google.com/a/macros/mail3.hwsh.tc.edu.tw/s/AKfycbyn4CPX5ob1SuNsJ9a2d-PUXmfabbmGleyNgMZQijPgZrpqilEYReg1LwDDZuDc3BTP/exec";
+        const apiUrl = "你的GAS部署網址"; 
         let travelData = {};
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
 
@@ -83,7 +88,7 @@
             return lines.length <= 1 ? linkify(text) : `<ol class="list-decimal ml-5 space-y-2">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`;
         }
 
-        // AI 導覽自動查詢修正
+        // AI 導覽優化：自動執行 400 字深度查詢
         function askGemini(title, mapUrl) {
             let placeKey = title;
             try {
@@ -95,8 +100,10 @@
                     }
                 }
             } catch (e) {}
-            const prompt = `請針對「${placeKey}」提供約400字的精簡介紹。內容包含：1.歷史文化意義 2.冬季特色景觀 3.推薦必買伴手禮。直接給出重點，減少綴字。`;
-            window.open(`https://gemini.google.com/app?prompt=${encodeURIComponent(prompt)}`, '_blank');
+
+            const prompt = `請針對「${placeKey}」提供約400字的精簡介紹。內容必須包含：1.歷史文化意義 2.冬季特色景觀 3.推薦必買伴手禮。請直接提供重點資訊，嚴禁使用過多綴字與開場白。`;
+            const geminiUrl = `https://gemini.google.com/app?prompt=${encodeURIComponent(prompt)}`;
+            window.open(geminiUrl, '_blank');
         }
 
         function openGoApp() {
@@ -119,6 +126,7 @@
             const tabs = document.getElementById('day-tabs');
             const container = document.getElementById('schedule-container');
             tabs.innerHTML = ''; container.innerHTML = '';
+
             travelData.days.forEach((d, dayIdx) => {
                 const btn = document.createElement('button');
                 btn.className = `day-btn flex-shrink-0 px-6 py-2 rounded-[1.5rem] flex flex-col items-center bg-white text-slate-400 border border-slate-100 ${dayIdx === 0 ? 'active' : ''}`;
@@ -129,33 +137,40 @@
                     showDay(d.day);
                 };
                 tabs.appendChild(btn);
+
                 const div = document.createElement('div');
                 div.id = `day-sec-${d.day}`;
                 div.className = `day-section ${dayIdx === 0 ? '' : 'hidden'}`;
+                
                 let html = '';
                 d.items.forEach((item, itemIdx) => {
                     const itemId = `d${d.day}i${itemIdx}`;
                     const isDone = progress[itemId];
-                    html += `<div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
-                        <div class="img-container">
-                            <img src="${item.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">
-                            <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
-                                <i class="far fa-clock mr-1"></i>${item.time}
+                    html += `
+                        <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
+                            <div class="img-container">
+                                <img src="${item.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">
+                                <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
+                                    <i class="far fa-clock mr-1"></i>${item.time}
+                                </div>
+                                <button onclick="toggleProgress('${itemId}')" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center">
+                                    ${isDone ? '✅' : '○'}
+                                </button>
                             </div>
-                            <button onclick="toggleProgress('${itemId}')" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center">${isDone ? '✅' : '○'}</button>
-                        </div>
-                        <div class="p-5">
-                            <h3 class="font-black text-lg text-slate-700 mb-3">${item.title}</h3>
-                            <div class="grid grid-cols-2 gap-2 mb-3">
-                                <button onclick="askGemini('${item.title}', '${item.map}')" class="bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-3 rounded-xl text-[10px] font-bold shadow-md transition active:scale-95"><i class="fas fa-robot mr-1"></i>AI 導覽</button>
-                                <button onclick="openMemoByIndex(${dayIdx}, ${itemIdx})" class="bg-slate-100 text-slate-600 py-3 rounded-xl text-[10px] font-bold">查看筆記</button>
+                            <div class="p-5">
+                                <h3 class="font-black text-lg text-slate-700 mb-3">${item.title}</h3>
+                                <div class="grid grid-cols-2 gap-2 mb-3">
+                                    <button onclick="askGemini('${item.title}', '${item.map}')" class="bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-3 rounded-xl text-[10px] font-bold shadow-md active:scale-95 transition">
+                                        <i class="fas fa-robot mr-1"></i>AI 導覽
+                                    </button>
+                                    <button onclick="openMemoByIndex(${dayIdx}, ${itemIdx})" class="bg-slate-100 text-slate-600 py-3 rounded-xl text-[10px] font-bold">查看筆記</button>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="openGoApp()" class="bg-black text-white py-3 rounded-xl text-[10px] font-bold">GO 叫車</button>
+                                    <a href="${item.map}" target="_blank" class="bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center flex items-center justify-center shadow-sm">開啟導航</a>
+                                </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="openGoApp()" class="bg-black text-white py-3 rounded-xl text-[10px] font-bold">GO 叫車</button>
-                                <a href="${item.map}" target="_blank" class="bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center flex items-center justify-center shadow-sm">開啟導航</a>
-                            </div>
-                        </div>
-                    </div>`;
+                        </div>`;
                 });
                 div.innerHTML = html;
                 container.appendChild(div);
