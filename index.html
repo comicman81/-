@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json?v=2">
     <meta name="theme-color" content="#38bdf8">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=2">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -115,20 +115,25 @@
             renderSchedule();
         }
 
+        // --- 優化後的 GO 叫車邏輯 ---
         function openGoApp() {
             const goAppScheme = "jp.go.taxiapp://";
             const webUrl = "https://go.mo-t.com/";
             let hasOpened = false;
 
-            window.location.href = goAppScheme;
+            // 使用背景點擊法喚起 APP
+            const link = document.createElement('a');
+            link.href = goAppScheme;
+            link.click();
 
             window.onblur = function() {
-                hasOpened = true;
+                hasOpened = true; // 視窗失去焦點代表 APP 被開啟
             };
 
+            // 1.5 秒後如果還留在網頁，代表沒裝 APP，自動跳轉網頁版
             setTimeout(() => {
                 if (!hasOpened && document.visibilityState === 'visible') {
-                    window.open(webUrl, "_blank");
+                    window.location.href = webUrl;
                 }
             }, 1500);
         }
