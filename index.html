@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
-    <link rel="manifest" href="manifest.json?v=6">
+    <link rel="manifest" href="manifest.json?v=7">
     <meta name="theme-color" content="#38bdf8">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=6">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=7">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -76,20 +76,24 @@
         let travelData = {};
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
 
-        // 輔助函式：將網址轉換為可點擊連結
+        // 核心修正：同時支援純網址與 Markdown 格式 [替代文字](網址)
         function linkify(text) {
-            const urlRegex = /(https?:\/\/[^\s]+)/g;
-            return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" class="memo-link">${url}</a>`);
+            // 1. 先處理 Markdown 格式 [文字](網址)
+            let processedText = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, 
+                '<a href="$2" target="_blank" class="memo-link">$1</a>');
+            
+            // 2. 再處理剩下的純網址 (排除已經被 HTML 標籤包住的網址)
+            const urlRegex = /(?<!href="|">)(https?:\/\/[^\s<]+)/g;
+            processedText = processedText.replace(urlRegex, 
+                '<a href="$1" target="_blank" class="memo-link">$1</a>');
+            
+            return processedText;
         }
 
-        // 輔助函式：處理筆記換行與自動加序號
         function formatMultiLines(text) {
             if (!text) return '尚無筆記';
-            // 以換行符號分割，並過濾掉空行
             const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             if (lines.length <= 1) return linkify(text);
-            
-            // 使用 <ol> 標籤實現自動數字序號 (1. 2. 3.)
             return `<ol class="list-decimal ml-5 space-y-2">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`;
         }
 
@@ -216,7 +220,6 @@
         }
         function openMemo(title, memo) {
             document.getElementById('modal-title').innerText = title;
-            // 使用優化後的函式渲染內容
             document.getElementById('modal-memo-content').innerHTML = formatMultiLines(decodeURIComponent(memo));
             document.getElementById('memo-modal').classList.replace('hidden', 'flex');
         }
