@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
-    <link rel="manifest" href="manifest.json?v=8">
+    <link rel="manifest" href="manifest.json?v=9">
     <meta name="theme-color" content="#38bdf8">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=8">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=9">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -76,15 +76,26 @@
         let travelData = {};
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
 
+        /**
+         * 處理超連結：同時支援 Markdown [文字](網址) 與純網址偵測
+         */
         function linkify(text) {
+            if (!text) return "";
+            // 1. 先處理 Markdown 格式 [文字](網址)
             let processedText = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, 
                 '<a href="$2" target="_blank" class="memo-link">$1</a>');
+            
+            // 2. 再處理剩下的純網址 (使用 Lookbehind 避開 HTML 標籤內的網址)
             const urlRegex = /(?<!href="|">)(https?:\/\/[^\s<]+)/g;
             processedText = processedText.replace(urlRegex, 
                 '<a href="$1" target="_blank" class="memo-link">$1</a>');
+            
             return processedText;
         }
 
+        /**
+         * 處理多行筆記與換行
+         */
         function formatMultiLines(text) {
             if (!text || text === "undefined") return '尚無筆記';
             const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
@@ -105,10 +116,10 @@
                     }
                 }
             } catch (e) { console.log("解析網址失敗"); }
+
             const prompt = `請針對「${placeKey}」提供約300字的精簡介紹，內容包含：1.歷史文化意義 2.必吃美食建議 3.冬季景觀特色。請直接給出重點，不要有過多綴字。`;
             const geminiUrl = `https://gemini.google.com/app?prompt=${encodeURIComponent(prompt)}`;
-            const win = window.open(geminiUrl, '_blank');
-            if (!win) window.location.href = geminiUrl;
+            window.open(geminiUrl, '_blank');
         }
 
         function openGoApp() {
@@ -126,10 +137,6 @@
 
         function formatTime(timeStr) {
             if (!timeStr) return "--:--";
-            if (typeof timeStr === 'string' && timeStr.includes('T')) {
-                const date = new Date(timeStr);
-                return date.getHours().toString().padStart(2, '0') + ":" + date.getMinutes().toString().padStart(2, '0');
-            }
             return timeStr;
         }
 
@@ -171,7 +178,7 @@
                 d.items.forEach((item, itemIdx) => {
                     const itemId = `d${d.day}i${itemIdx}`;
                     const isDone = progress[itemId];
-                    // 核心修正點：改用索引傳值，避開特殊字元中斷 HTML
+                    // 使用索引值引用資料，解決 Day 5 之後內容過長導致 HTML 語法破碎的問題
                     html += `
                         <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
                             <div class="img-container">
@@ -203,7 +210,7 @@
             });
         }
 
-        // 核心修正：透過資料陣列索引來讀取筆記，徹底解決特殊符號問題
+        // 核心修正：透過資料陣列索引來讀取筆記，徹底解決特殊符號中斷 HTML 的問題
         function openMemoByIndex(dayIdx, itemIdx) {
             const item = travelData.days[dayIdx].items[itemIdx];
             document.getElementById('modal-title').innerText = item.title;
@@ -215,13 +222,18 @@
             document.querySelectorAll('.day-section').forEach(s => s.classList.add('hidden'));
             document.getElementById(`day-sec-${d}`).classList.remove('hidden');
         }
+
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
             document.getElementById('btn-schedule').className = tab === 'schedule' ? 'text-sky-400' : 'text-slate-300';
             document.getElementById('btn-expenses').className = tab === 'expenses' ? 'text-sky-400' : 'text-slate-300';
         }
-        function closeMemo() { document.getElementById('memo-modal').classList.replace('flex', 'hidden'); }
+
+        function closeMemo() { 
+            document.getElementById('memo-modal').classList.replace('flex', 'hidden'); 
+        }
+
         function createSnow() {
             const container = document.getElementById('snow-container');
             if (container.children.length > 0) return;
@@ -233,15 +245,15 @@
                 container.appendChild(snow);
             }
         }
+
         function toggleProgress(itemId) {
             progress[itemId] = !progress[itemId];
             localStorage.setItem('trip_progress', JSON.stringify(progress));
             renderSchedule();
         }
 
-        // 預留 Expenses 渲染功能 (若需要)
         function renderExpenses() {
-            // 此處可依照您的需求實作支出列表渲染
+            // 如有支出資料處理需求，可在此擴充
         }
 
         window.onload = () => fetchTravelData();
