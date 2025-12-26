@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
-    <link rel="manifest" href="manifest.json?v=11">
+    <link rel="manifest" href="manifest.json?v=12">
     <meta name="theme-color" content="#38bdf8">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=11">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=12">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -71,24 +71,29 @@
     </footer>
 
     <script>
-        const apiUrl = "你的GAS部署網址"; 
+        // --- 核心設定 ---
+        const apiUrl = "你的GAS部署網址"; // 請替換為正確的 /exec 網址
         let travelData = {};
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
 
+        // 處理筆記中的網址連結
         function linkify(text) {
             if (!text) return "";
+            // 處理 Markdown [文字](網址) 格式
             let processed = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" class="memo-link">$1</a>');
+            // 處理純網址文字 (不重複處理已轉為標籤的網址)
             const urlRegex = /(?<!href="|">)(https?:\/\/[^\s<]+)/g;
             return processed.replace(urlRegex, '<a href="$1" target="_blank" class="memo-link">$1</a>');
         }
 
+        // 處理多行文字顯示
         function formatMultiLines(text) {
             if (!text || text === "undefined") return '尚無筆記';
             const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             return lines.length <= 1 ? linkify(text) : `<ol class="list-decimal ml-5 space-y-2">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`;
         }
 
-        // AI 導覽優化：自動執行 400 字深度查詢
+        // AI 導覽優化：自動執行約 400 字深度查詢
         function askGemini(title, mapUrl) {
             let placeKey = title;
             try {
@@ -106,11 +111,13 @@
             window.open(geminiUrl, '_blank');
         }
 
+        // 開啟叫車 APP
         function openGoApp() {
             window.location.href = "jp.go.taxiapp://";
             setTimeout(() => { window.location.href = "https://go.mo-t.com/"; }, 1500);
         }
 
+        // 從 GAS 同步資料
         async function fetchTravelData() {
             try {
                 const res = await fetch(apiUrl + "?t=" + Date.now());
@@ -118,9 +125,12 @@
                 document.getElementById('loading-screen').style.display = 'none';
                 renderSchedule();
                 createSnow();
-            } catch (e) { document.getElementById('loading-text').innerText = "同步失敗"; }
+            } catch (e) { 
+                document.getElementById('loading-text').innerText = "同步失敗"; 
+            }
         }
 
+        // 渲染行程介面
         function renderSchedule() {
             if (!travelData.days) return;
             const tabs = document.getElementById('day-tabs');
@@ -177,6 +187,7 @@
             });
         }
 
+        // 開啟特定項目的筆記
         function openMemoByIndex(dayIdx, itemIdx) {
             const item = travelData.days[dayIdx].items[itemIdx];
             document.getElementById('modal-title').innerText = item.title;
@@ -184,11 +195,13 @@
             document.getElementById('memo-modal').classList.replace('hidden', 'flex');
         }
 
+        // 切換顯示天數
         function showDay(d) {
             document.querySelectorAll('.day-section').forEach(s => s.classList.add('hidden'));
             document.getElementById(`day-sec-${d}`).classList.remove('hidden');
         }
 
+        // 切換分頁
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
@@ -196,8 +209,12 @@
             document.getElementById('btn-expenses').className = tab === 'expenses' ? 'text-sky-400' : 'text-slate-300';
         }
 
-        function closeMemo() { document.getElementById('memo-modal').classList.replace('flex', 'hidden'); }
+        // 關閉筆記視窗
+        function closeMemo() { 
+            document.getElementById('memo-modal').classList.replace('flex', 'hidden'); 
+        }
 
+        // 下雪特效
         function createSnow() {
             const container = document.getElementById('snow-container');
             for (let i = 0; i < 20; i++) {
@@ -209,6 +226,7 @@
             }
         }
 
+        // 切換打卡進度
         function toggleProgress(itemId) {
             progress[itemId] = !progress[itemId];
             localStorage.setItem('trip_progress', JSON.stringify(progress));
