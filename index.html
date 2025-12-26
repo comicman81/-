@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
-    <link rel="manifest" href="manifest.json?v=14">
+    <link rel="manifest" href="manifest.json?v=15">
     <meta name="theme-color" content="#38bdf8">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=14">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=15">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -71,7 +71,7 @@
     </footer>
 
     <script>
-        // ✅ 已填入您提供的 GAS 部署網址
+        // ✅ 使用您指定的 GAS 部署網址
         const apiUrl = "https://script.google.com/macros/s/AKfycbyGG-anC4LDXkN-DZXt1voIDe6OiRckLVEvoCo_A9QuROI3lxj2UV-IGDJsz26gOdedPg/exec";
         
         let travelData = {};
@@ -92,20 +92,14 @@
             return lines.length <= 1 ? linkify(text) : `<ol class="list-decimal ml-5 space-y-2">${lines.map(l => `<li>${linkify(l)}</li>`).join('')}</ol>`;
         }
 
-        // AI 導覽：自動執行約 400 字深度查詢
-        function askGemini(title, mapUrl) {
-            let placeKey = title;
-            try {
-                if (mapUrl && mapUrl.includes('google.com')) {
-                    if (mapUrl.includes('/place/')) {
-                        placeKey = decodeURIComponent(mapUrl.split('/place/')[1].split('/')[0]).replace(/\+/g, ' ');
-                    } else if (mapUrl.includes('q=')) {
-                        placeKey = new URL(mapUrl).searchParams.get('q');
-                    }
-                }
-            } catch (e) {}
-
+        // ✅ AI 導覽修正：直接抓取 title 欄位，並加上完整指令
+        function askGemini(title) {
+            // 不再解析 Map URL，直接使用地點名稱 (title)
+            const placeKey = title || "日本旅遊景點"; 
+            
+            // 明確的 Prompt 指令
             const prompt = `請針對「${placeKey}」提供約400字的精簡介紹。內容必須包含：1.歷史文化意義 2.冬季特色景觀 3.推薦必買伴手禮。請直接提供重點資訊，嚴禁使用過多綴字與開場白。`;
+            
             const geminiUrl = `https://gemini.google.com/app?prompt=${encodeURIComponent(prompt)}`;
             window.open(geminiUrl, '_blank');
         }
@@ -160,6 +154,7 @@
                 d.items.forEach((item, itemIdx) => {
                     const itemId = `d${d.day}i${itemIdx}`;
                     const isDone = progress[itemId];
+                    // ✅ 時間欄位修正：直接顯示 item.time，不做任何 Date 物件轉換
                     html += `
                         <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
                             <div class="img-container">
@@ -174,14 +169,14 @@
                             <div class="p-5">
                                 <h3 class="font-black text-lg text-slate-700 mb-3">${item.title}</h3>
                                 <div class="grid grid-cols-2 gap-2 mb-3">
-                                    <button onclick="askGemini('${item.title}', '${item.map}')" class="bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-3 rounded-xl text-[10px] font-bold shadow-md active:scale-95 transition">
+                                    <button onclick="askGemini('${item.title}')" class="bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-md active:scale-95 transition">
                                         <i class="fas fa-robot mr-1"></i>AI 導覽
                                     </button>
-                                    <button onclick="openMemoByIndex(${dayIdx}, ${itemIdx})" class="bg-slate-100 text-slate-600 py-3 rounded-xl text-[10px] font-bold">查看筆記</button>
+                                    <button onclick="openMemoByIndex(${dayIdx}, ${itemIdx})" class="bg-slate-100 text-slate-600 py-2.5 rounded-xl text-sm font-bold">查看筆記</button>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="openGoApp()" class="bg-black text-white py-3 rounded-xl text-[10px] font-bold">GO 叫車</button>
-                                    <a href="${item.map}" target="_blank" class="bg-sky-400 text-white py-3 rounded-xl text-[10px] font-bold text-center flex items-center justify-center shadow-sm">開啟導航</a>
+                                    <button onclick="openGoApp()" class="bg-black text-white py-2.5 rounded-xl text-sm font-bold">GO 叫車</button>
+                                    <a href="${item.map}" target="_blank" class="bg-sky-400 text-white py-2.5 rounded-xl text-sm font-bold text-center flex items-center justify-center shadow-sm">開啟導航</a>
                                 </div>
                             </div>
                         </div>`;
