@@ -157,14 +157,22 @@
                 d.items.forEach((item, itemIdx) => {
                     const itemId = `d${d.day}i${itemIdx}`;
                     const isDone = progress[itemId];
-                    // ✅ 時間欄位：直接使用後端傳來的原始字串 (GAS 已修正為 getDisplayValues)
+                    // ✅ 修改：在圖片容器中加入Desc欄位顯示，位於左下角
                     html += `
                         <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
                             <div class="img-container">
                                 <img src="${item.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">
+                                
                                 <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
                                     <i class="far fa-clock mr-1"></i>${item.time}
                                 </div>
+
+                                ${item.desc ? `
+                                <div class="absolute bottom-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm max-w-[85%] truncate">
+                                    <i class="fas fa-location-arrow mr-1"></i>${item.desc}
+                                </div>
+                                ` : ''}
+
                                 <button onclick="toggleProgress('${itemId}')" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center">
                                     ${isDone ? '✅' : '○'}
                                 </button>
