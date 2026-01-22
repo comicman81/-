@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
+    <meta name="referrer" content="no-referrer">
+    
     <link rel="manifest" href="manifest.json?v=17">
     <meta name="theme-color" content="#38bdf8">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=17">
@@ -110,7 +112,7 @@
                     <li><button onclick="guideApp.navigate('overview')" class="nav-item active w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex items-center gap-3"><span>🏯</span><span>景點與文化</span></button></li>
                     <li><button onclick="guideApp.navigate('food')" class="nav-item w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex items-center gap-3"><span>🥢</span><span>道地美食</span></button></li>
                     <li><button onclick="guideApp.navigate('tips')" class="nav-item w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex items-center gap-3"><span>📸</span><span>拍照秘笈</span></button></li>
-                    <li><button onclick="guideApp.navigate('ai-concierge')" class="nav-item w-full text-left px-6 py-4 hover:bg-indigo-50 transition-colors flex items-center gap-3 text-indigo-700 font-bold"><span>✨</span><span>AI 旅遊嚮導</span></button></li>
+                    <li><button onclick="guideApp.navigate('ai-concierge')" class="nav-item w-full text-left px-6 py-4 hover:bg-indigo-50 transition-colors flex items-center gap-3 text-indigo-700 font-bold"><span>✨</span><span>旅遊管家</span></button></li>
                 </ul>
             </div>
             <div class="p-6 border-t border-gray-100 text-xs text-gray-400">
@@ -126,13 +128,16 @@
             <i class="fas fa-bars"></i>
         </button>
 
-        <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div class="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 shadow-2xl relative">
-                <div class="flex justify-between items-center mb-4 border-b pb-2">
-                    <h3 id="ai-modal-title" class="text-xl font-bold text-indigo-700">✨ AI 建議</h3>
-                    <button onclick="guideApp.closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full">&times;</button>
+        <div id="ai-modal" onclick="if(event.target === this) guideApp.closeModal()" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-white rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden">
+                <div class="flex justify-between items-center p-4 border-b bg-white z-10 shrink-0">
+                    <h3 id="ai-modal-title" class="text-xl font-bold text-indigo-700">✨ 旅遊管家建議</h3>
+                    <button onclick="guideApp.closeModal()" class="text-gray-400 hover:text-gray-600 text-3xl w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full transition">&times;</button>
                 </div>
-                <div id="ai-modal-body" class="text-gray-700 leading-relaxed whitespace-pre-wrap"></div>
+                <div id="ai-modal-body" class="p-6 overflow-y-auto text-gray-700 leading-relaxed whitespace-pre-wrap overscroll-contain"></div>
+                <div class="p-4 border-t bg-gray-50 shrink-0 flex justify-end">
+                    <button onclick="guideApp.closeModal()" class="w-full md:w-auto bg-slate-800 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-700 transition">關閉視窗</button>
+                </div>
             </div>
         </div>
 
@@ -142,66 +147,34 @@
 
     <script>
         // ==========================================
-        // 1. Guide Database (資料庫：預設資料 + 雲端資料)
+        // 1. Guide Database
         // ==========================================
-        const guideDatabase = {
-            // 預設的 fallback 資料 (若試算表沒讀到會用這個)
-            "ouchijuku": {
-                title: "大內宿",
-                subTitle: "文化與美食",
-                themeColor: "#8c7b75",
-                aiPersona: "你是一位精通日本福島縣大內宿歷史與美食的專業導覽員。請用繁體中文回答問題。",
-                overview: {
-                    title: "時光倒流的江戶驛站",
-                    desc: "大內宿曾是連接會津若松與日光的重要宿場。這裡保留了江戶時代的風貌，街道兩旁整齊排列著茅葺屋頂建築。",
-                    history: "走在寬闊的土路街道上，彷彿能聽見馬蹄聲迴盪在歷史的長廊。",
-                    img: "https://fukushima.travel/images/comm_pic_106_1.jpg",
-                    features: ["傳統茅葺工法", "江戶時代街道佈局", "重要傳統建造物保存區"],
-                    aiPrompt: "請介紹大內宿茅葺屋頂的結構特點。"
-                },
-                food: {
-                    title: "必嚐特色美食",
-                    items: [
-                        { name: "高遠蕎麥麵", desc: "用大蔥當筷子吃的特色麵食。", img: "🍜", aiPrompt: "介紹高遠蕎麥麵的歷史。" }
-                    ]
-                },
-                tips: {
-                    title: "拍照秘笈",
-                    img: "https://image.cache.storm.mg/styles/smg-800x533-fp/s3/media/image/2018/12/28/20181228-112658_U10931_M486392_8039.jpg",
-                    desc: "見晴台是拍攝大內宿全景的最佳地點。",
-                    actionText: "獲取見晴台構圖建議",
-                    aiPrompt: "提供見晴台構圖建議。"
-                }
-            }
-        };
+        const guideDatabase = {};
 
         // ==========================================
-        // 2. Guide App Logic (通用控制器)
+        // 2. Guide App Logic
         // ==========================================
-        // ⚠️ 請在此處貼上您的 Gemini API Key
-        const apiKey = ""; 
+        
+        // ⚠️ API Key
+        const apiKey = "AIzaSyCsTckKweWtDj0g88fEiI32UFuBiAsRmWM"; 
 
         const guideApp = {
             state: { currentId: null, currentView: 'overview' },
 
-            // 開啟導覽 (傳入 ID)
             open: function(guideId) {
                 const data = guideDatabase[guideId];
-                if (!data) { alert("尚未建立此景點的導覽資料！請檢查試算表 ID 設定。"); return; }
-                
+                if (!data) { 
+                    alert("⚠️ 錯誤：找不到 ID 為 [" + guideId + "] 的導覽資料。\n\n請檢查：\n1. Google 試算表 'guideData' 分頁是否已填寫正確的 guideId。\n2. 是否已在 GAS 部署為『新版本』。"); 
+                    return; 
+                }
                 this.state.currentId = guideId;
-                
-                // 設定標題與顏色
                 document.getElementById('d-guide-title').innerText = "🏮 " + data.title;
                 document.getElementById('d-guide-subtitle').innerText = data.subTitle;
                 document.getElementById('m-guide-title').innerText = "🏮 " + data.title;
                 document.documentElement.style.setProperty('--guide-color', data.themeColor);
-
-                // 顯示介面
                 const overlay = document.getElementById('guide-overlay');
                 overlay.classList.remove('hidden');
                 overlay.classList.add('flex');
-                
                 this.navigate('overview');
             },
 
@@ -236,7 +209,6 @@
             renderView: function(viewName) {
                 const main = document.getElementById('guide-main-content');
                 const data = guideDatabase[this.state.currentId]; 
-                
                 main.innerHTML = '';
                 if (viewName === 'overview') this.renderOverview(main, data);
                 else if (viewName === 'food') this.renderFood(main, data);
@@ -244,11 +216,13 @@
                 else if (viewName === 'ai-concierge') this.renderAIConcierge(main, data);
             },
 
+            // 修正：圖片標籤加入 referrerpolicy="no-referrer"
             renderOverview: function(container, data) {
                 const info = data.overview;
-                // 容錯處理：如果沒有 features 陣列，給一個空陣列
-                const features = info.features || ["歷史景點", "文化遺產"];
-                
+                const culturePrompt = `請詳細導覽「${data.title}」的背景故事與文化特色，並說明為什麼這裡值得一遊。`;
+                const historyPrompt = `請專注介紹「${data.title}」的歷史淵源、過去發生的重要事件，以及這些歷史如何影響現在的樣貌。`;
+                const btnClass = "bg-white p-5 rounded-xl shadow-md border border-gray-100 flex items-center justify-between hover:bg-indigo-50 active:scale-95 transition group w-full";
+
                 container.innerHTML = `
                     <div class="guide-fade-in max-w-5xl mx-auto">
                         <h2 class="text-3xl font-bold mb-4 text-gray-800 border-b-2 border-[var(--guide-color)] pb-2 inline-block">${info.title || data.title}</h2>
@@ -256,43 +230,66 @@
                             <div class="space-y-6">
                                 <p class="text-lg text-gray-600 leading-relaxed">${info.desc}</p>
                                 <div class="img-box h-64 shadow-inner font-bold text-gray-400 bg-gray-100">
-                                    <img src="${info.img}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/600x400?text=No+Image'">
+                                    <img src="${info.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/600x400?text=No+Image'">
                                 </div>
                             </div>
-                            <div class="space-y-6">
-                                <div class="bg-indigo-50 p-6 rounded-lg shadow-md border-l-4 border-indigo-400">
-                                    <h3 class="text-xl font-bold mb-4 text-indigo-800">✨ AI 文化解說</h3>
-                                    <button onclick="guideApp.callGemini('${info.aiPrompt || '介紹這個地方的特色'}', '文化解說')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition w-full text-left flex justify-between items-center">
-                                        <span>詢問詳細文化背景</span>
-                                        <i class="fas fa-chevron-right"></i>
-                                    </button>
-                                </div>
-                                <ul class="grid grid-cols-1 gap-3">
-                                    ${features.map(f => `<li class="bg-white p-3 rounded shadow-sm border border-gray-100 flex items-center gap-2"><span>🏯</span> ${f}</li>`).join('')}
-                                </ul>
+                            <div class="space-y-4">
+                                <h3 class="text-xl font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                    <i class="fas fa-info-circle text-indigo-500"></i> 深度導覽
+                                </h3>
+                                <button onclick="guideApp.callGemini('${culturePrompt}', '文化解說')" class="${btnClass}">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-2xl">✨</div>
+                                        <div class="text-left">
+                                            <div class="font-bold text-lg text-gray-800 group-hover:text-indigo-700">文化解說</div>
+                                            <div class="text-sm text-gray-500">了解這裡的背景故事</div>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-500"></i>
+                                </button>
+                                <button onclick="guideApp.callGemini('${historyPrompt}', '歷史景點')" class="${btnClass}">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-2xl">🏯</div>
+                                        <div class="text-left">
+                                            <div class="font-bold text-lg text-gray-800 group-hover:text-orange-700">歷史景點</div>
+                                            <div class="text-sm text-gray-500">探索過去的歷史淵源</div>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-orange-500"></i>
+                                </button>
                             </div>
                         </div>
                     </div>`;
             },
 
+            // 修正：圖片標籤加入 referrerpolicy="no-referrer"
             renderFood: function(container, data) {
                 const info = data.food;
                 const items = info.items || [];
                 
-                const foodCards = items.map(item => `
+                const foodCards = items.map(item => {
+                    const foodPrompt = `請介紹「${data.title}」的特色美食：「${item.name}」。包含它的由來、口感與推薦吃法。`;
+                    
+                    let imgHtml = item.img;
+                    if (item.img.startsWith('http')) {
+                        // 加入 referrerpolicy
+                        imgHtml = `<img src="${item.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/600x400?text=Food'">`;
+                    }
+
+                    return `
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
                         <div class="img-box h-56 w-full text-6xl flex items-center justify-center bg-gray-100">
-                            ${item.img.startsWith('http') ? `<img src="${item.img}" class="w-full h-full object-cover">` : item.img}
+                            ${imgHtml}
                         </div>
                         <div class="p-6">
                             <h3 class="text-2xl font-bold text-[var(--guide-color)] mb-2">${item.name}</h3>
                             <p class="text-gray-600 leading-relaxed">${item.desc}</p>
-                            <button onclick="guideApp.callGemini('${item.name}的故事與特色', '${item.name}')" class="mt-4 text-indigo-600 text-sm font-bold flex items-center gap-1 hover:underline">
-                                ✨ 關於這道菜的 AI 故事
+                            <button onclick="guideApp.callGemini('${foodPrompt}', '${item.name}')" class="mt-4 text-indigo-600 text-sm font-bold flex items-center gap-1 hover:underline">
+                                ✨ 聽聽旅遊管家怎麼說
                             </button>
                         </div>
                     </div>
-                `).join('');
+                `}).join('');
 
                 container.innerHTML = `
                     <div class="guide-fade-in max-w-5xl mx-auto">
@@ -303,18 +300,21 @@
                     </div>`;
             },
 
+            // 修正：圖片標籤加入 referrerpolicy="no-referrer"
             renderTips: function(container, data) {
                 const info = data.tips;
+                const tipsPrompt = `請提供在「${data.title}」拍攝「${info.title || '美景'}」的攝影建議，包含構圖技巧、最佳拍攝時間以及如何避開人潮。`;
+
                 container.innerHTML = `
                     <div class="guide-fade-in max-w-5xl mx-auto">
                         <h2 class="text-3xl font-bold mb-4 text-gray-800 border-b-2 border-[var(--guide-color)] pb-2 inline-block">📸 ${info.title || "攝影指南"}</h2>
                         <div class="bg-white p-8 rounded-lg shadow-md mt-6 text-center">
                             <div class="img-box h-64 mb-6 max-w-md mx-auto font-bold text-gray-400 bg-gray-100 rounded-lg overflow-hidden">
-                                <img src="${info.img}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/600x400?text=No+Image'">
+                                <img src="${info.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/600x400?text=No+Image'">
                             </div>
                             <p class="mb-6 text-gray-600 max-w-lg mx-auto">${info.desc}</p>
-                            <button onclick="guideApp.callGemini('${info.aiPrompt || '請提供攝影建議'}', '攝影建議')" class="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-indigo-700 transition">
-                                ✨ ${info.actionText || '獲取 AI 建議'}
+                            <button onclick="guideApp.callGemini('${tipsPrompt}', '攝影建議')" class="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-indigo-700 transition">
+                                ✨ ${info.actionText || '詢問旅遊管家'}
                             </button>
                         </div>
                     </div>`;
@@ -323,11 +323,11 @@
             renderAIConcierge: function(container, data) {
                 container.innerHTML = `
                     <div class="guide-fade-in max-w-5xl mx-auto h-full flex flex-col">
-                        <h2 class="text-3xl font-bold mb-4 text-indigo-700 border-b-2 border-indigo-200 pb-2 inline-block">✨ AI 旅遊嚮導</h2>
+                        <h2 class="text-3xl font-bold mb-4 text-indigo-700 border-b-2 border-indigo-200 pb-2 inline-block">✨ 旅遊管家</h2>
                         <div class="flex-1 flex flex-col bg-white rounded-xl shadow-lg border border-indigo-100 overflow-hidden mt-4" style="min-height: 400px;">
                             <div id="chat-history" class="flex-1 p-6 overflow-y-auto space-y-4 bg-gray-50">
                                 <div class="bg-indigo-100 p-3 rounded-lg max-w-[80%] text-indigo-800">
-                                    您好！我是您的${data.title}專屬導遊。任何關於這裡的歷史、交通或美食問題都可以問我！
+                                    您好！我是您的${data.title}專屬旅遊管家。任何關於這裡的歷史、交通或美食問題都可以問我！
                                 </div>
                             </div>
                             <div class="p-4 border-t flex gap-2">
@@ -343,17 +343,17 @@
                 const body = document.getElementById('ai-modal-body');
                 const title = document.getElementById('ai-modal-title');
                 
-                title.innerText = "✨ AI：" + modalTitle;
+                title.innerText = "✨ 旅遊管家：" + modalTitle;
                 modal.classList.remove('hidden');
-                body.innerHTML = '<div class="text-center p-8"><div class="spinner mr-2"></div> AI 正在思考中...</div>';
+                body.innerHTML = '<div class="text-center p-8"><div class="spinner mr-2"></div> 旅遊管家正在思考中...</div>';
 
                 try {
                     const currentData = guideDatabase[this.state.currentId];
-                    const systemPrompt = currentData.aiPersona || "你是一位專業的旅遊助手。";
+                    const systemPrompt = currentData.aiPersona || "你是一位貼心的旅遊隨行管家，請用親切、易懂的繁體中文為我們全家人介紹景點與美食。";
                     const response = await this.fetchGemini(promptText, systemPrompt);
                     body.innerHTML = response;
                 } catch (error) {
-                    body.innerHTML = `<div class="text-red-500">抱歉，AI 暫時無法回應。請檢查網路或 API Key。</div>`;
+                    body.innerHTML = `<div class="text-red-500">抱歉，旅遊管家暫時無法回應。請檢查網路或 API Key。</div>`;
                 }
             },
 
@@ -375,11 +375,11 @@
 
                 try {
                     const currentData = guideDatabase[this.state.currentId];
-                    const systemPrompt = currentData.aiPersona;
+                    const systemPrompt = currentData.aiPersona || "你是一位貼心的旅遊隨行管家，請用親切、易懂的繁體中文為我們全家人介紹景點與美食。";
                     const response = await this.fetchGemini(text, systemPrompt);
                     document.getElementById(loadingId).innerText = response;
                 } catch (error) {
-                    document.getElementById(loadingId).innerText = "導覽員忙線中 (請檢查 API Key)";
+                    document.getElementById(loadingId).innerText = "旅遊管家忙線中 (請檢查 API Key)";
                 }
                 history.scrollTop = history.scrollHeight;
             },
@@ -413,19 +413,20 @@
         };
 
         // ==========================================
-        // 3. Main App Logic (行程表主程式)
+        // 3. Main App Logic
         // ==========================================
-        const apiUrl = "https://script.google.com/macros/s/AKfycbyGG-anC4LDXkN-DZXt1voIDe6OiRckLVEvoCo_A9QuROI3lxj2UV-IGDJsz26gOdedPg/exec";
+        const apiUrl = "https://script.google.com/macros/s/AKfycbxKcWJD1mBa7K7W2tkHul0tDzDnzH7j3R6ZR5s7InAwXqDyqSDL5TI43y2L07Lb0DQB/exec";
+        
         let travelData = {};
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
 
-        // ⚠️ 如果您在試算表新增了景點，請在這裡加入對應
-        // 格式: "行程表上的標題": "試算表 guideId"
         const guideTitleMap = {
             "大內宿": "ouchijuku",
             "大内宿": "ouchijuku",
             "只見川": "tadami",
-            "第一橋樑": "tadami"
+            "第一橋樑": "tadami",
+            "新潟機場": "niigata-airport",
+            "新潟空港": "niigata-airport"
         };
 
         function getGuideId(title) {
@@ -455,18 +456,15 @@
 
         async function fetchTravelData() {
             try {
-                // 1. 取得資料
                 const res = await fetch(apiUrl + "?t=" + Date.now());
                 if (!res.ok) throw new Error("Network response was not ok");
                 
                 const rawData = await res.json();
+                
                 if (rawData.error) throw new Error(rawData.error);
 
-                // 2. 處理行程資料
                 travelData = rawData; 
 
-                // 3. 處理導遊資料 (關鍵修改點！)
-                // 如果後端有回傳 guides 資料，就合併到前端的 guideDatabase
                 if (rawData.guides) {
                     console.log("成功載入導遊資料:", Object.keys(rawData.guides));
                     Object.assign(guideDatabase, rawData.guides);
@@ -477,7 +475,7 @@
                 createSnow();
             } catch (e) {
                 console.error("同步錯誤:", e);
-                document.getElementById('loading-text').innerText = "同步失敗，請檢查網路";
+                document.getElementById('loading-text').innerHTML = "同步失敗<br><span style='font-size:12px;opacity:0.8'>請檢查網址或試算表權限</span>";
             }
         }
 
@@ -506,12 +504,12 @@
                 d.items.forEach((item, itemIdx) => {
                     const itemId = `d${d.day}i${itemIdx}`;
                     const isDone = progress[itemId];
-                    const guideId = getGuideId(item.title); // 檢查是否能對應到導遊 ID
+                    const guideId = getGuideId(item.title); 
                     
                     html += `
                         <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
                             <div class="img-container">
-                                <img src="${item.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">
+                                <img src="${item.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">
                                 <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
                                     <i class="far fa-clock mr-1"></i>${item.time}
                                 </div>
