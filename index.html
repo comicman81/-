@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
-    <meta name="referrer" content="no-referrer">
-    
     <link rel="manifest" href="manifest.json?v=17">
     <meta name="theme-color" content="#38bdf8">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2334/2334855.png?v=17">
@@ -111,7 +109,6 @@
                 <ul class="mt-4 md:mt-0 space-y-1">
                     <li><button onclick="guideApp.navigate('overview')" class="nav-item active w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex items-center gap-3"><span>🏯</span><span>景點與文化</span></button></li>
                     <li><button onclick="guideApp.navigate('food')" class="nav-item w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex items-center gap-3"><span>🥢</span><span>道地美食</span></button></li>
-                    <li><button onclick="guideApp.navigate('tips')" class="nav-item w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex items-center gap-3"><span>📸</span><span>拍照秘笈</span></button></li>
                     <li><button onclick="guideApp.navigate('ai-concierge')" class="nav-item w-full text-left px-6 py-4 hover:bg-indigo-50 transition-colors flex items-center gap-3 text-indigo-700 font-bold"><span>✨</span><span>旅遊管家</span></button></li>
                 </ul>
             </div>
@@ -194,7 +191,8 @@
             navigate: function(viewName) {
                 document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
                 const navItems = document.querySelectorAll('.nav-item');
-                const mapping = { 'overview': 0, 'food': 1, 'tips': 2, 'ai-concierge': 3 };
+                // 修正對應表：已移除 tips
+                const mapping = { 'overview': 0, 'food': 1, 'ai-concierge': 2 };
                 if(navItems[mapping[viewName]]) navItems[mapping[viewName]].classList.add('active');
                 
                 this.state.currentView = viewName;
@@ -212,11 +210,10 @@
                 main.innerHTML = '';
                 if (viewName === 'overview') this.renderOverview(main, data);
                 else if (viewName === 'food') this.renderFood(main, data);
-                else if (viewName === 'tips') this.renderTips(main, data);
+                // 已移除 tips 頁面渲染
                 else if (viewName === 'ai-concierge') this.renderAIConcierge(main, data);
             },
 
-            // 修正：圖片標籤加入 referrerpolicy="no-referrer"
             renderOverview: function(container, data) {
                 const info = data.overview;
                 const culturePrompt = `請詳細導覽「${data.title}」的背景故事與文化特色，並說明為什麼這裡值得一遊。`;
@@ -262,7 +259,6 @@
                     </div>`;
             },
 
-            // 修正：圖片標籤加入 referrerpolicy="no-referrer"
             renderFood: function(container, data) {
                 const info = data.food;
                 const items = info.items || [];
@@ -272,7 +268,6 @@
                     
                     let imgHtml = item.img;
                     if (item.img.startsWith('http')) {
-                        // 加入 referrerpolicy
                         imgHtml = `<img src="${item.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/600x400?text=Food'">`;
                     }
 
@@ -296,26 +291,6 @@
                         <h2 class="text-3xl font-bold mb-4 text-gray-800 border-b-2 border-[var(--guide-color)] pb-2 inline-block">${info.title || "特色美食"}</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mt-8">
                             ${foodCards}
-                        </div>
-                    </div>`;
-            },
-
-            // 修正：圖片標籤加入 referrerpolicy="no-referrer"
-            renderTips: function(container, data) {
-                const info = data.tips;
-                const tipsPrompt = `請提供在「${data.title}」拍攝「${info.title || '美景'}」的攝影建議，包含構圖技巧、最佳拍攝時間以及如何避開人潮。`;
-
-                container.innerHTML = `
-                    <div class="guide-fade-in max-w-5xl mx-auto">
-                        <h2 class="text-3xl font-bold mb-4 text-gray-800 border-b-2 border-[var(--guide-color)] pb-2 inline-block">📸 ${info.title || "攝影指南"}</h2>
-                        <div class="bg-white p-8 rounded-lg shadow-md mt-6 text-center">
-                            <div class="img-box h-64 mb-6 max-w-md mx-auto font-bold text-gray-400 bg-gray-100 rounded-lg overflow-hidden">
-                                <img src="${info.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/600x400?text=No+Image'">
-                            </div>
-                            <p class="mb-6 text-gray-600 max-w-lg mx-auto">${info.desc}</p>
-                            <button onclick="guideApp.callGemini('${tipsPrompt}', '攝影建議')" class="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-indigo-700 transition">
-                                ✨ ${info.actionText || '詢問旅遊管家'}
-                            </button>
                         </div>
                     </div>`;
             },
@@ -395,7 +370,8 @@
 
                 while (retries > 0) {
                     try {
-                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        // 修正：使用 gemini-1.5-flash 穩定版模型，解決 Busy 問題
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload)
