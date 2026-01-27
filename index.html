@@ -31,7 +31,6 @@
         #guide-overlay { font-family: 'Noto Sans TC', sans-serif; }
         .guide-fade-in { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .nav-item.active { background-color: #f3f4f6; border-right: 4px solid var(--guide-color, #8c7b75); font-weight: bold; color: var(--guide-color, #8c7b75); }
         .spinner {
             border: 3px solid rgba(140, 123, 117, 0.3); border-radius: 50%; border-top: 3px solid var(--guide-color, #8c7b75);
             width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block;
@@ -44,6 +43,11 @@
         }
         /* 動態主題色變數 */
         :root { --guide-color: #8c7b75; }
+        
+        /* 聊天室樣式優化 */
+        .chat-bubble { max-width: 85%; padding: 12px 16px; border-radius: 1rem; line-height: 1.6; font-size: 0.95rem; margin-bottom: 12px; position: relative; }
+        .chat-user { background-color: #3b82f6; color: white; margin-left: auto; border-bottom-right-radius: 4px; }
+        .chat-ai { background-color: #f3f4f6; color: #374151; margin-right: auto; border-bottom-left-radius: 4px; border: 1px solid #e5e7eb; }
     </style>
 </head>
 <body class="pb-24">
@@ -91,54 +95,90 @@
         <button onclick="switchTab('expenses')" id="btn-expenses" class="text-slate-300"><i class="fas fa-yen-sign text-xl"></i></button>
     </footer>
 
-    <div id="guide-overlay" class="fixed inset-0 bg-[#fdfbf7] z-[200] hidden flex-col md:flex-row overflow-hidden">
+    <div id="guide-overlay" class="fixed inset-0 bg-white z-[200] hidden flex-col overflow-hidden">
         
-        <header class="md:hidden bg-white shadow-sm p-4 flex justify-between items-center z-10 shrink-0">
-            <h1 id="m-guide-title" class="text-xl font-bold text-gray-800">🏮 私人導遊</h1>
-            <button onclick="guideApp.close()" class="text-gray-500 font-bold border border-gray-300 px-3 py-1 rounded-lg text-sm">
-                <i class="fas fa-times mr-1"></i>結束
+        <header class="bg-white/90 backdrop-blur shadow-sm p-4 flex justify-between items-center z-10 shrink-0 border-b">
+            <div>
+                <h1 id="guide-top-title" class="text-lg font-bold text-gray-800">🏮 私人導遊</h1>
+                <p id="guide-top-subtitle" class="text-xs text-gray-500">探索景點故事</p>
+            </div>
+            <button onclick="guideApp.close()" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold hover:bg-gray-200 transition">
+                <i class="fas fa-times"></i>
             </button>
         </header>
 
-        <nav id="guide-sidebar" class="bg-white border-r border-gray-200 w-full md:w-64 flex-shrink-0 absolute md:relative transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-20 h-full flex flex-col justify-between pt-14 md:pt-0">
-            <div>
-                <div class="p-6 hidden md:block">
-                    <h1 id="d-guide-title" class="text-2xl font-bold text-gray-800 tracking-wide">導覽標題</h1>
-                    <span id="d-guide-subtitle" class="text-base font-normal text-gray-500">副標題</span>
-                </div>
-                <ul class="mt-4 md:mt-0 space-y-1">
-                    <li><button onclick="guideApp.navigate('overview')" class="nav-item active w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex items-center gap-3"><span>🏯</span><span>景點與文化</span></button></li>
-                    <li><button onclick="guideApp.navigate('food')" class="nav-item w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex items-center gap-3"><span>🥢</span><span>道地美食</span></button></li>
-                    <li><button onclick="guideApp.navigate('ai-concierge')" class="nav-item w-full text-left px-6 py-4 hover:bg-indigo-50 transition-colors flex items-center gap-3 text-indigo-700 font-bold"><span>✨</span><span>旅遊管家</span></button></li>
-                </ul>
-            </div>
-            <div class="p-6 border-t border-gray-100 text-xs text-gray-400">
-                <button onclick="guideApp.close()" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold mb-4 md:hidden">結束導覽</button>
-                <button onclick="guideApp.close()" class="hidden md:block w-full border border-slate-300 text-slate-600 py-2 rounded-lg font-bold mb-4 hover:bg-slate-100">返回主行程</button>
-                <p>Powered by Gemini ✨</p>
-            </div>
-        </nav>
-
-        <main class="flex-1 overflow-y-auto relative bg-[#fdfbf7] p-4 md:p-8 pb-24" id="guide-main-content"></main>
-
-        <button id="guide-menu-btn" onclick="guideApp.toggleMenu()" class="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-30 text-2xl">
-            <i class="fas fa-bars"></i>
-        </button>
-
-        <div id="ai-modal" onclick="if(event.target === this) guideApp.closeModal()" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div class="bg-white rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden">
-                <div class="flex justify-between items-center p-4 border-b bg-white z-10 shrink-0">
-                    <h3 id="ai-modal-title" class="text-xl font-bold text-indigo-700">✨ 旅遊管家建議</h3>
-                    <button onclick="guideApp.closeModal()" class="text-gray-400 hover:text-gray-600 text-3xl w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full transition">&times;</button>
-                </div>
-                <div id="ai-modal-body" class="p-6 overflow-y-auto text-gray-700 leading-relaxed whitespace-pre-wrap overscroll-contain"></div>
-                <div class="p-4 border-t bg-gray-50 shrink-0 flex justify-end">
-                    <button onclick="guideApp.closeModal()" class="w-full md:w-auto bg-slate-800 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-700 transition">關閉視窗</button>
+        <main id="guide-scroll-container" class="flex-1 overflow-y-auto bg-[#f8fafc] pb-20">
+            <div class="relative h-64 w-full">
+                <div id="guide-hero-img-container" class="w-full h-full bg-gray-200"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-6 text-white">
+                    <h2 id="guide-hero-title" class="text-3xl font-bold mb-1"></h2>
+                    <p id="guide-hero-desc" class="text-sm opacity-90 line-clamp-2"></p>
                 </div>
             </div>
+
+            <div class="p-5 space-y-8 max-w-3xl mx-auto">
+                
+                <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 guide-fade-in">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-l-4 border-[var(--guide-color)] pl-3">
+                        <i class="fas fa-book-open text-[var(--guide-color)]"></i> 文化與歷史景點解說
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="guideApp.askGemini('culture')" class="bg-indigo-50 p-4 rounded-xl text-center hover:bg-indigo-100 active:scale-95 transition border border-indigo-100 group">
+                            <div class="w-10 h-10 bg-indigo-200 text-indigo-700 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">✨</div>
+                            <span class="font-bold text-gray-700 text-sm block">文化解說</span>
+                        </button>
+                        <button onclick="guideApp.askGemini('history')" class="bg-orange-50 p-4 rounded-xl text-center hover:bg-orange-100 active:scale-95 transition border border-orange-100 group">
+                            <div class="w-10 h-10 bg-orange-200 text-orange-700 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🏯</div>
+                            <span class="font-bold text-gray-700 text-sm block">歷史景點</span>
+                        </button>
+                    </div>
+                    <div id="guide-info-response" class="mt-4 hidden">
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 text-sm leading-relaxed text-gray-700"></div>
+                    </div>
+                </section>
+
+                <section id="guide-food-section" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 guide-fade-in">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-l-4 border-[var(--guide-color)] pl-3">
+                        <i class="fas fa-utensils text-[var(--guide-color)]"></i> 當地美食
+                    </h3>
+                    <div id="food-list" class="space-y-4"></div>
+                </section>
+
+                <section class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden guide-fade-in flex flex-col h-[500px]">
+                    <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-robot text-indigo-500"></i> 旅遊管家
+                        </h3>
+                        <span class="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full font-bold">線上</span>
+                    </div>
+                    
+                    <div id="chat-history" class="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+                        <div class="chat-bubble chat-ai">
+                            您好！我是您的專屬旅遊管家。關於這裡的任何問題，歡迎隨時問我！
+                        </div>
+                    </div>
+
+                    <div class="p-3 border-t bg-white flex gap-2">
+                        <input id="chat-input" type="text" placeholder="問問旅遊管家..." class="flex-1 border border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 px-4 py-3 rounded-xl outline-none transition text-sm">
+                        <button onclick="guideApp.handleChat()" class="bg-indigo-600 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-md active:scale-95 transition">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </section>
+
+                <div class="text-center text-xs text-gray-400 pb-4">Powered by Gemini ✨</div>
+            </div>
+        </main>
+    </div>
+
+    <div id="ai-modal" onclick="if(event.target === this) guideApp.closeModal()" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[250] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl max-w-md w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-[fadeIn_0.2s_ease-out]">
+            <div class="flex justify-between items-center p-4 border-b bg-gray-50">
+                <h3 id="ai-modal-title" class="font-bold text-gray-800">旅遊管家建議</h3>
+                <button onclick="guideApp.closeModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-500">&times;</button>
+            </div>
+            <div id="ai-modal-body" class="p-5 overflow-y-auto text-sm leading-relaxed text-gray-700"></div>
         </div>
-
-        <div id="guide-overlay-bg" class="fixed inset-0 bg-black bg-opacity-50 hidden z-10 md:hidden" onclick="guideApp.toggleMenu()"></div>
     </div>
 
 
@@ -149,30 +189,50 @@
         const guideDatabase = {};
 
         // ==========================================
-        // 2. Guide App Logic
+        // 2. Guide App Logic (單頁式改版)
         // ==========================================
         
         // ⚠️ API Key
         const apiKey = "AIzaSyCsTckKweWtDj0g88fEiI32UFuBiAsRmWM"; 
 
         const guideApp = {
-            state: { currentId: null, currentView: 'overview' },
+            state: { currentId: null },
 
             open: function(guideId) {
                 const data = guideDatabase[guideId];
                 if (!data) { 
-                    alert("⚠️ 錯誤：找不到 ID 為 [" + guideId + "] 的導覽資料。\n\n請檢查：\n1. Google 試算表 'guideData' 分頁是否已填寫正確的 guideId。\n2. 是否已在 GAS 部署為『新版本』。"); 
+                    alert("⚠️ 錯誤：找不到 ID 為 [" + guideId + "] 的導覽資料。\n\n請檢查 Google 試算表設定。"); 
                     return; 
                 }
                 this.state.currentId = guideId;
-                document.getElementById('d-guide-title').innerText = "🏮 " + data.title;
-                document.getElementById('d-guide-subtitle').innerText = data.subTitle;
-                document.getElementById('m-guide-title').innerText = "🏮 " + data.title;
+                
+                // 設定 CSS 變數
                 document.documentElement.style.setProperty('--guide-color', data.themeColor);
+
+                // 填充頂部資訊
+                document.getElementById('guide-top-title').innerText = "🏮 " + data.title;
+                document.getElementById('guide-hero-title').innerText = data.title;
+                document.getElementById('guide-hero-desc').innerText = data.overview.desc;
+                
+                // 處理主圖 (加入防擋 Referrer)
+                const imgContainer = document.getElementById('guide-hero-img-container');
+                imgContainer.innerHTML = `<img src="${data.overview.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover">`;
+
+                // 填充美食列表
+                this.renderFood(data.food.items || [], data.title);
+
+                // 重置聊天室與解說區
+                document.getElementById('chat-history').innerHTML = `
+                    <div class="chat-bubble chat-ai">
+                        您好！我是您的${data.title}專屬旅遊管家。關於這裡的任何問題，歡迎隨時問我！
+                    </div>`;
+                document.getElementById('guide-info-response').classList.add('hidden');
+                document.getElementById('guide-info-response').querySelector('div').innerText = '';
+
+                // 顯示介面
                 const overlay = document.getElementById('guide-overlay');
                 overlay.classList.remove('hidden');
                 overlay.classList.add('flex');
-                this.navigate('overview');
             },
 
             close: function() {
@@ -181,188 +241,130 @@
                 overlay.classList.remove('flex');
             },
 
-            toggleMenu: function() {
-                const sidebar = document.getElementById('guide-sidebar');
-                const overlay = document.getElementById('guide-overlay-bg');
-                sidebar.classList.toggle('-translate-x-full');
-                overlay.classList.toggle('hidden');
+            // 渲染美食區塊
+            renderFood: function(items, locationTitle) {
+                const container = document.getElementById('food-list');
+                container.innerHTML = '';
+                
+                if (items.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">尚無美食資料</p>';
+                    return;
+                }
+
+                items.forEach(item => {
+                    const foodPrompt = `請介紹「${locationTitle}」的特色美食：「${item.name}」。由來、口感與推薦吃法。`;
+                    
+                    // 檢查圖片連結並加入 referrerpolicy
+                    let imgHtml = item.img;
+                    if (item.img.startsWith('http')) {
+                        imgHtml = `<img src="${item.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">`;
+                    }
+
+                    const html = `
+                        <div class="flex gap-4 p-3 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100 transition group cursor-pointer" onclick="guideApp.askGeminiFood('${foodPrompt}', '${item.name}')">
+                            <div class="w-24 h-24 shrink-0 rounded-lg overflow-hidden bg-gray-200 shadow-sm relative">
+                                ${imgHtml}
+                                <div class="absolute bottom-0 right-0 bg-white/90 px-1.5 py-0.5 rounded-tl-lg text-xs font-bold text-gray-500">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 flex flex-col justify-center">
+                                <h4 class="font-bold text-gray-800 text-lg mb-1 group-hover:text-[var(--guide-color)] transition">${item.name}</h4>
+                                <p class="text-xs text-gray-500 line-clamp-2 leading-relaxed">${item.desc}</p>
+                                <span class="text-xs text-indigo-500 font-bold mt-2 flex items-center gap-1">
+                                    <i class="fas fa-comment-dots"></i> 點擊詢問管家
+                                </span>
+                            </div>
+                        </div>`;
+                    container.innerHTML += html;
+                });
             },
 
-            navigate: function(viewName) {
-                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                const navItems = document.querySelectorAll('.nav-item');
-                // 修正對應表：已移除 tips
-                const mapping = { 'overview': 0, 'food': 1, 'ai-concierge': 2 };
-                if(navItems[mapping[viewName]]) navItems[mapping[viewName]].classList.add('active');
+            // 針對文化/歷史按鈕的處理 (顯示在按鈕下方)
+            askGemini: async function(type) {
+                const data = guideDatabase[this.state.currentId];
+                let prompt = "";
+                let title = "";
+
+                if (type === 'culture') {
+                    prompt = `請詳細導覽「${data.title}」的背景故事與文化特色，並說明為什麼這裡值得一遊。`;
+                    title = "文化解說";
+                } else {
+                    prompt = `請專注介紹「${data.title}」的歷史淵源、過去發生的重要事件，以及這些歷史如何影響現在的樣貌。`;
+                    title = "歷史景點";
+                }
+
+                const responseArea = document.getElementById('guide-info-response');
+                const contentDiv = responseArea.querySelector('div');
                 
-                this.state.currentView = viewName;
-                this.renderView(viewName);
-                
-                if (window.innerWidth < 768) {
-                    const sidebar = document.getElementById('guide-sidebar');
-                    if(!sidebar.classList.contains('-translate-x-full')) this.toggleMenu();
+                responseArea.classList.remove('hidden');
+                contentDiv.innerHTML = `<div class="flex items-center gap-2 text-gray-500"><div class="spinner"></div> 旅遊管家正在查詢${title}...</div>`;
+
+                try {
+                    const systemPrompt = data.aiPersona || "你是一位貼心的旅遊隨行管家。";
+                    const text = await this.fetchGemini(prompt, systemPrompt);
+                    contentDiv.innerHTML = `<h4 class="font-bold text-[var(--guide-color)] mb-2">🏮 ${title}</h4>${text}`;
+                } catch (e) {
+                    contentDiv.innerHTML = `<span class="text-red-500">連線失敗，請檢查網路。</span>`;
                 }
             },
 
-            renderView: function(viewName) {
-                const main = document.getElementById('guide-main-content');
-                const data = guideDatabase[this.state.currentId]; 
-                main.innerHTML = '';
-                if (viewName === 'overview') this.renderOverview(main, data);
-                else if (viewName === 'food') this.renderFood(main, data);
-                // 已移除 tips 頁面渲染
-                else if (viewName === 'ai-concierge') this.renderAIConcierge(main, data);
-            },
-
-            renderOverview: function(container, data) {
-                const info = data.overview;
-                const culturePrompt = `請詳細導覽「${data.title}」的背景故事與文化特色，並說明為什麼這裡值得一遊。`;
-                const historyPrompt = `請專注介紹「${data.title}」的歷史淵源、過去發生的重要事件，以及這些歷史如何影響現在的樣貌。`;
-                const btnClass = "bg-white p-5 rounded-xl shadow-md border border-gray-100 flex items-center justify-between hover:bg-indigo-50 active:scale-95 transition group w-full";
-
-                container.innerHTML = `
-                    <div class="guide-fade-in max-w-5xl mx-auto">
-                        <h2 class="text-3xl font-bold mb-4 text-gray-800 border-b-2 border-[var(--guide-color)] pb-2 inline-block">${info.title || data.title}</h2>
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
-                            <div class="space-y-6">
-                                <p class="text-lg text-gray-600 leading-relaxed">${info.desc}</p>
-                                <div class="img-box h-64 shadow-inner font-bold text-gray-400 bg-gray-100">
-                                    <img src="${info.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/600x400?text=No+Image'">
-                                </div>
-                            </div>
-                            <div class="space-y-4">
-                                <h3 class="text-xl font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                    <i class="fas fa-info-circle text-indigo-500"></i> 深度導覽
-                                </h3>
-                                <button onclick="guideApp.callGemini('${culturePrompt}', '文化解說')" class="${btnClass}">
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-2xl">✨</div>
-                                        <div class="text-left">
-                                            <div class="font-bold text-lg text-gray-800 group-hover:text-indigo-700">文化解說</div>
-                                            <div class="text-sm text-gray-500">了解這裡的背景故事</div>
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-500"></i>
-                                </button>
-                                <button onclick="guideApp.callGemini('${historyPrompt}', '歷史景點')" class="${btnClass}">
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-2xl">🏯</div>
-                                        <div class="text-left">
-                                            <div class="font-bold text-lg text-gray-800 group-hover:text-orange-700">歷史景點</div>
-                                            <div class="text-sm text-gray-500">探索過去的歷史淵源</div>
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-orange-500"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>`;
-            },
-
-            renderFood: function(container, data) {
-                const info = data.food;
-                const items = info.items || [];
-                
-                const foodCards = items.map(item => {
-                    const foodPrompt = `請介紹「${data.title}」的特色美食：「${item.name}」。包含它的由來、口感與推薦吃法。`;
-                    
-                    let imgHtml = item.img;
-                    if (item.img.startsWith('http')) {
-                        imgHtml = `<img src="${item.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/600x400?text=Food'">`;
-                    }
-
-                    return `
-                    <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
-                        <div class="img-box h-56 w-full text-6xl flex items-center justify-center bg-gray-100">
-                            ${imgHtml}
-                        </div>
-                        <div class="p-6">
-                            <h3 class="text-2xl font-bold text-[var(--guide-color)] mb-2">${item.name}</h3>
-                            <p class="text-gray-600 leading-relaxed">${item.desc}</p>
-                            <button onclick="guideApp.callGemini('${foodPrompt}', '${item.name}')" class="mt-4 text-indigo-600 text-sm font-bold flex items-center gap-1 hover:underline">
-                                ✨ 聽聽旅遊管家怎麼說
-                            </button>
-                        </div>
-                    </div>
-                `}).join('');
-
-                container.innerHTML = `
-                    <div class="guide-fade-in max-w-5xl mx-auto">
-                        <h2 class="text-3xl font-bold mb-4 text-gray-800 border-b-2 border-[var(--guide-color)] pb-2 inline-block">${info.title || "特色美食"}</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mt-8">
-                            ${foodCards}
-                        </div>
-                    </div>`;
-            },
-
-            renderAIConcierge: function(container, data) {
-                container.innerHTML = `
-                    <div class="guide-fade-in max-w-5xl mx-auto h-full flex flex-col">
-                        <h2 class="text-3xl font-bold mb-4 text-indigo-700 border-b-2 border-indigo-200 pb-2 inline-block">✨ 旅遊管家</h2>
-                        <div class="flex-1 flex flex-col bg-white rounded-xl shadow-lg border border-indigo-100 overflow-hidden mt-4" style="min-height: 400px;">
-                            <div id="chat-history" class="flex-1 p-6 overflow-y-auto space-y-4 bg-gray-50">
-                                <div class="bg-indigo-100 p-3 rounded-lg max-w-[80%] text-indigo-800">
-                                    您好！我是您的${data.title}專屬旅遊管家。任何關於這裡的歷史、交通或美食問題都可以問我！
-                                </div>
-                            </div>
-                            <div class="p-4 border-t flex gap-2">
-                                <input id="chat-input" type="text" placeholder="輸入問題..." class="flex-1 border-2 border-indigo-100 focus:border-indigo-400 p-3 rounded-xl outline-none">
-                                <button onclick="guideApp.handleChat()" class="bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700">✨ 送出</button>
-                            </div>
-                        </div>
-                    </div>`;
-            },
-
-            callGemini: async function(promptText, modalTitle) {
+            // 針對美食的處理 (顯示在 Modal)
+            askGeminiFood: async function(prompt, foodName) {
                 const modal = document.getElementById('ai-modal');
                 const body = document.getElementById('ai-modal-body');
                 const title = document.getElementById('ai-modal-title');
                 
-                title.innerText = "✨ 旅遊管家：" + modalTitle;
+                title.innerText = "美食介紹：" + foodName;
                 modal.classList.remove('hidden');
-                body.innerHTML = '<div class="text-center p-8"><div class="spinner mr-2"></div> 旅遊管家正在思考中...</div>';
+                body.innerHTML = '<div class="text-center p-8 text-gray-500"><div class="spinner mr-2"></div> 正在準備美食故事...</div>';
 
                 try {
-                    const currentData = guideDatabase[this.state.currentId];
-                    const systemPrompt = currentData.aiPersona || "你是一位貼心的旅遊隨行管家，請用親切、易懂的繁體中文為我們全家人介紹景點與美食。";
-                    const response = await this.fetchGemini(promptText, systemPrompt);
-                    body.innerHTML = response;
-                } catch (error) {
-                    body.innerHTML = `<div class="text-red-500">抱歉，旅遊管家暫時無法回應。請檢查網路或 API Key。</div>`;
+                    const data = guideDatabase[this.state.currentId];
+                    const systemPrompt = data.aiPersona || "你是一位美食評論家與導遊。";
+                    const text = await this.fetchGemini(prompt, systemPrompt);
+                    body.innerHTML = text;
+                } catch (e) {
+                    body.innerHTML = `<div class="text-center text-red-500 p-4">暫時無法回應，請稍後再試。</div>`;
                 }
             },
 
-            closeModal: function() { document.getElementById('ai-modal').classList.add('hidden'); },
+            closeModal: function() {
+                document.getElementById('ai-modal').classList.add('hidden');
+            },
 
+            // 聊天室功能
             handleChat: async function() {
                 const input = document.getElementById('chat-input');
                 const history = document.getElementById('chat-history');
                 const text = input.value.trim();
                 if (!text) return;
 
-                history.innerHTML += `<div class="bg-white p-3 rounded-lg max-w-[80%] ml-auto text-gray-800 shadow-sm border">${text}</div>`;
+                // 1. 顯示使用者訊息
+                history.innerHTML += `<div class="chat-bubble chat-user">${text}</div>`;
                 input.value = "";
                 history.scrollTop = history.scrollHeight;
 
+                // 2. 顯示 Loading
                 const loadingId = 'ai-loading-' + Date.now();
-                history.innerHTML += `<div id="${loadingId}" class="bg-indigo-100 p-3 rounded-lg max-w-[80%] text-indigo-800"><div class="spinner"></div></div>`;
+                history.innerHTML += `<div id="${loadingId}" class="chat-bubble chat-ai flex items-center gap-2"><div class="spinner"></div> 思考中...</div>`;
                 history.scrollTop = history.scrollHeight;
 
                 try {
-                    const currentData = guideDatabase[this.state.currentId];
-                    const systemPrompt = currentData.aiPersona || "你是一位貼心的旅遊隨行管家，請用親切、易懂的繁體中文為我們全家人介紹景點與美食。";
+                    const data = guideDatabase[this.state.currentId];
+                    const systemPrompt = data.aiPersona || "你是一位貼心的旅遊隨行管家。";
                     const response = await this.fetchGemini(text, systemPrompt);
-                    document.getElementById(loadingId).innerText = response;
+                    document.getElementById(loadingId).innerHTML = response;
                 } catch (error) {
-                    document.getElementById(loadingId).innerText = "旅遊管家忙線中 (請檢查 API Key)";
+                    document.getElementById(loadingId).innerText = "旅遊管家暫時忙線中 (請檢查網路或 Key)";
                 }
                 history.scrollTop = history.scrollHeight;
             },
 
             fetchGemini: async function(userPrompt, systemPrompt) {
-                if (!apiKey) return "請在程式碼中填入 Gemini API Key。";
+                if (!apiKey) return "請填寫 API Key";
                 
-                let retries = 3;
+                let retries = 2;
                 const payload = {
                     contents: [{ parts: [{ text: userPrompt }] }],
                     systemInstruction: { parts: [{ text: systemPrompt }] }
@@ -370,7 +372,6 @@
 
                 while (retries > 0) {
                     try {
-                        // 修正：使用 gemini-1.5-flash 穩定版模型，解決 Busy 問題
                         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -391,7 +392,8 @@
         // ==========================================
         // 3. Main App Logic
         // ==========================================
-        const apiUrl = "https://script.google.com/macros/s/AKfycbxKcWJD1mBa7K7W2tkHul0tDzDnzH7j3R6ZR5s7InAwXqDyqSDL5TI43y2L07Lb0DQB/exec";
+        // ⚠️ 更新後的 GAS 網址
+        const apiUrl = "https://script.google.com/macros/s/AKfycbxMXJXHZQC1lWQDEBWxk9yDk6v24EyTKm5wwh5lkR9zMH19Tw7HLteoIddLlYlGHPoQWg/exec";
         
         let travelData = {};
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
