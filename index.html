@@ -48,7 +48,6 @@
             font-size: 1.5rem; flex-shrink: 0;
         }
         
-        /* 新增：主題色文字 class，讓 JS 動態控制 */
         .theme-text { color: var(--guide-color, #4b5563); }
         .theme-bg-light { background-color: var(--guide-color); opacity: 0.1; }
     </style>
@@ -164,12 +163,12 @@
 
     <script>
         // ==========================================
-        // 1. Guide Database (現在只存文字資料)
+        // 1. Guide Database
         // ==========================================
         const guideDatabase = {};
 
         // ==========================================
-        // 2. Guide App Logic (無 API 版)
+        // 2. Guide App Logic
         // ==========================================
         
         const guideApp = {
@@ -191,7 +190,7 @@
                 
                 // 應用顏色到 UI
                 document.getElementById('guide-top-title').innerText = "🏮 " + data.title;
-                document.getElementById('guide-top-title').style.color = themeColor; // 標題變色
+                document.getElementById('guide-top-title').style.color = themeColor;
                 
                 document.getElementById('guide-hero-title').innerText = data.title;
                 
@@ -218,11 +217,11 @@
                 const title = document.getElementById('static-modal-title');
                 const closeBtn = document.getElementById('static-modal-close-btn');
 
-                // 應用顏色到 Modal
+                // 應用顏色
                 const themeColor = data.themeColor || '#4b5563';
                 title.style.color = themeColor;
                 closeBtn.style.color = themeColor;
-                closeBtn.style.borderColor = themeColor + '30'; // 淡淡的邊框
+                closeBtn.style.borderColor = themeColor + '30'; 
                 
                 let contentHTML = "";
 
@@ -237,20 +236,21 @@
                     
                     if (rawText.includes("||")) {
                         const items = rawText.split("||");
-                        let listHtml = '<div class="space-y-6">'; 
+                        // 修改：間距改小 (space-y-3)，移除不必要的 padding
+                        let listHtml = '<div class="space-y-3">'; 
                         items.forEach(item => {
                             const parts = item.split(":::");
                             const foodName = parts[0] ? parts[0].trim() : "";
                             const foodDesc = parts[1] ? parts[1].trim() : "";
                             
                             if(foodName) {
-                                // 讓菜名也套用主題色，但稍微深一點或直接用主題色
+                                // 修改：padding 改小 (p-3)，標題下方 margin 改小 (mb-1)，行高改緊 (leading-snug)
                                 listHtml += `
-                                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
-                                        <h4 class="font-bold text-xl mb-2 flex items-center gap-2" style="color:${themeColor}">
+                                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm">
+                                        <h4 class="font-bold text-lg mb-1 flex items-center gap-2" style="color:${themeColor}">
                                             <i class="fas fa-utensils text-sm"></i> ${foodName}
                                         </h4>
-                                        <p class="text-gray-600 leading-relaxed text-base">${foodDesc}</p>
+                                        <p class="text-gray-600 leading-snug text-base">${foodDesc}</p>
                                     </div>`;
                             }
                         });
