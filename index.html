@@ -47,6 +47,10 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 1.5rem; flex-shrink: 0;
         }
+        
+        /* 新增：主題色文字 class，讓 JS 動態控制 */
+        .theme-text { color: var(--guide-color, #4b5563); }
+        .theme-bg-light { background-color: var(--guide-color); opacity: 0.1; }
     </style>
 </head>
 <body class="pb-24">
@@ -98,7 +102,7 @@
         
         <header class="bg-white/90 backdrop-blur shadow-sm p-4 flex justify-between items-center z-10 shrink-0 border-b">
             <div>
-                <h1 id="guide-top-title" class="text-lg font-bold text-gray-800">🏮 私人導遊</h1>
+                <h1 id="guide-top-title" class="text-lg font-bold transition-colors duration-300">🏮 私人導遊</h1>
             </div>
             <button onclick="guideApp.close()" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold hover:bg-gray-200 transition">
                 <i class="fas fa-times"></i>
@@ -148,13 +152,13 @@
         </main>
     </div>
 
-    <div id="static-modal" onclick="if(event.target === this) guideApp.closeModal('static-modal')" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[250] flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-xl max-w-md w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-[fadeIn_0.2s_ease-out]">
-            <div class="flex justify-between items-center p-4 border-b bg-gray-50">
-                <h3 id="static-modal-title" class="font-bold text-gray-800">導覽資訊</h3>
-                <button onclick="guideApp.closeModal('static-modal')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-500">&times;</button>
+    <div id="static-modal" onclick="if(event.target === this) guideApp.closeModal('static-modal')" class="fixed inset-0 bg-black bg-opacity-60 hidden z-[250] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-[95%] max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-[fadeIn_0.2s_ease-out]">
+            <div class="flex justify-between items-center p-5 border-b bg-gray-50">
+                <h3 id="static-modal-title" class="font-black text-2xl tracking-wide transition-colors duration-300">導覽資訊</h3>
+                <button id="static-modal-close-btn" onclick="guideApp.closeModal('static-modal')" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-lg transition border border-transparent">&times;</button>
             </div>
-            <div id="static-modal-body" class="p-5 overflow-y-auto text-sm leading-relaxed text-gray-700 whitespace-pre-wrap"></div>
+            <div id="static-modal-body" class="p-6 overflow-y-auto text-lg leading-loose text-gray-700 whitespace-pre-wrap font-medium"></div>
         </div>
     </div>
 
@@ -181,18 +185,21 @@
                 }
                 this.state.currentTitle = title;
                 
-                // 設定標題與顏色
+                // 設定主題色
+                const themeColor = data.themeColor || '#4b5563';
+                document.documentElement.style.setProperty('--guide-color', themeColor);
+                
+                // 應用顏色到 UI
                 document.getElementById('guide-top-title').innerText = "🏮 " + data.title;
+                document.getElementById('guide-top-title').style.color = themeColor; // 標題變色
+                
                 document.getElementById('guide-hero-title').innerText = data.title;
-                document.documentElement.style.setProperty('--guide-color', data.themeColor || '#888');
                 
                 // 設定大圖
                 const imgContainer = document.getElementById('guide-hero-img-container');
                 const imgUrl = data.heroImg || "https://placehold.co/600x400?text=No+Image";
-                // ⚠️ 加入 referrerpolicy="no-referrer"
                 imgContainer.innerHTML = `<img src="${imgUrl}" referrerpolicy="no-referrer" class="w-full h-full object-cover">`;
 
-                // 顯示頁面
                 const overlay = document.getElementById('guide-overlay');
                 overlay.classList.remove('hidden');
                 overlay.classList.add('flex');
@@ -209,21 +216,55 @@
                 const modal = document.getElementById('static-modal');
                 const body = document.getElementById('static-modal-body');
                 const title = document.getElementById('static-modal-title');
+                const closeBtn = document.getElementById('static-modal-close-btn');
+
+                // 應用顏色到 Modal
+                const themeColor = data.themeColor || '#4b5563';
+                title.style.color = themeColor;
+                closeBtn.style.color = themeColor;
+                closeBtn.style.borderColor = themeColor + '30'; // 淡淡的邊框
                 
-                let content = "";
+                let contentHTML = "";
+
                 if (type === 'culture') {
-                    title.innerText = "文化與歷史解說";
-                    content = data.cultureText || "尚無此部分的介紹資料。";
+                    title.innerText = "🏯 文化與歷史解說";
+                    const rawText = data.cultureText || "尚無此部分的介紹資料。";
+                    contentHTML = `<div class="space-y-4">${rawText.split('\n').map(p => `<p>${p}</p>`).join('')}</div>`;
+
                 } else if (type === 'food') {
-                    title.innerText = "當地美食介紹";
-                    content = data.foodText || "尚無此部分的介紹資料。";
+                    title.innerText = "🍜 當地美食介紹";
+                    const rawText = data.foodText || "尚無此部分的介紹資料。";
+                    
+                    if (rawText.includes("||")) {
+                        const items = rawText.split("||");
+                        let listHtml = '<div class="space-y-6">'; 
+                        items.forEach(item => {
+                            const parts = item.split(":::");
+                            const foodName = parts[0] ? parts[0].trim() : "";
+                            const foodDesc = parts[1] ? parts[1].trim() : "";
+                            
+                            if(foodName) {
+                                // 讓菜名也套用主題色，但稍微深一點或直接用主題色
+                                listHtml += `
+                                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
+                                        <h4 class="font-bold text-xl mb-2 flex items-center gap-2" style="color:${themeColor}">
+                                            <i class="fas fa-utensils text-sm"></i> ${foodName}
+                                        </h4>
+                                        <p class="text-gray-600 leading-relaxed text-base">${foodDesc}</p>
+                                    </div>`;
+                            }
+                        });
+                        listHtml += '</div>';
+                        contentHTML = listHtml;
+                    } else {
+                        contentHTML = rawText;
+                    }
                 }
 
-                body.innerText = content; 
+                body.innerHTML = contentHTML; 
                 modal.classList.remove('hidden');
             },
 
-            // 開啟外部 Gemini 網頁
             openExternalGemini: function() {
                 window.open("https://gemini.google.com/app", "_blank");
             },
@@ -236,7 +277,6 @@
         // ==========================================
         // 3. Main App Logic
         // ==========================================
-        // ⚠️ 更新後的 GAS 網址
         const apiUrl = "https://script.google.com/macros/s/AKfycbxPtv0rhx9LHpryrcJ4LrxZk7wyIaFOMhoNrPymG7mlbEZJ3oHtNHTp2TuPR1teXD4eUg/exec";
         
         let travelData = {};
@@ -271,7 +311,6 @@
 
                 travelData = rawData; 
 
-                // 載入導遊資料 (Key 是 Title)
                 if (rawData.guides) {
                     console.log("成功載入導遊資料:", Object.keys(rawData.guides));
                     Object.assign(guideDatabase, rawData.guides);
@@ -311,12 +350,9 @@
                 d.items.forEach((item, itemIdx) => {
                     const itemId = `d${d.day}i${itemIdx}`;
                     const isDone = progress[itemId];
-                    
                     const hasGuide = guideDatabase[item.title] !== undefined;
-                    
                     const imgHtml = `<img src="${item.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">`;
                     
-                    // 顯示 Desc 內容
                     const descHtml = item.desc ? `
                         <div class="absolute bottom-3 left-3 bg-black/60 text-white px-3 py-1 rounded-lg text-xs font-bold backdrop-blur-sm max-w-[75%] truncate shadow-md">
                             ${item.desc}
