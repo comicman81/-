@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
-    <link rel="manifest" href="manifest.json?v=18">
+    <link rel="manifest" href="manifest.json?v=19">
     <meta name="theme-color" content="#38bdf8">
     
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=只&background=38bdf8&color=ffffff&size=512&font-size=0.6&length=1">
@@ -204,10 +204,12 @@
                 
                 document.getElementById('guide-hero-title').innerText = data.title;
                 
+                // 設定大圖
                 const imgContainer = document.getElementById('guide-hero-img-container');
                 const rawImgUrl = data.heroImg;
                 const imgUrl = this.convertDriveLink(rawImgUrl) || "https://placehold.co/600x400?text=No+Image";
                 
+                // ⚠️ 強制加入 no-referrer
                 imgContainer.innerHTML = `<img src="${imgUrl}" referrerpolicy="no-referrer" class="w-full h-full object-cover">`;
 
                 const overlay = document.getElementById('guide-overlay');
@@ -247,8 +249,8 @@
                     if (rawText.includes("||")) {
                         const items = rawText.split("||");
                         
-                        // 修正：space-y-2 (卡片間距緊湊)
-                        let listHtml = '<div class="space-y-2">'; 
+                        // 修正：space-y-1 (極致緊湊的卡片間距, 4px)
+                        let listHtml = '<div class="space-y-1">'; 
                         items.forEach(item => {
                             const parts = item.split(":::");
                             const foodName = parts[0] ? parts[0].trim() : "";
@@ -256,11 +258,11 @@
                             
                             if(foodName) {
                                 // 修正：
-                                // gap-0.5: 標題與內文間距極小
-                                // leading-tight: 行高緊湊
+                                // p-2.5: 卡片內邊距 (10px)
+                                // gap-0.5: 標題與內文幾乎貼合
                                 listHtml += `
-                                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-0.5">
-                                        <h4 class="font-bold text-lg leading-tight flex items-center gap-2" style="color:${themeColor}">
+                                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-0.5">
+                                        <h4 class="font-bold text-lg leading-none flex items-center gap-2" style="color:${themeColor}">
                                             <i class="fas fa-utensils text-sm"></i> ${foodName}
                                         </h4>
                                         <p class="text-gray-600 leading-snug text-base">${foodDesc}</p>
@@ -287,6 +289,7 @@
             }
         };
 
+        // ⚠️ 您提供的新 GAS 網址
         const apiUrl = "https://script.google.com/macros/s/AKfycby79Izn8WP0pIpkADK5E_rcj7wLqk6Ga2MrHg2bYT7ETmnkSdwGF2mjSct4ZWj_IU4w/exec";
         
         let travelData = {};
