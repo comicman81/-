@@ -174,6 +174,18 @@
         const guideApp = {
             state: { currentTitle: null }, 
 
+            // 自動轉換 Google Drive 分享連結
+            convertDriveLink: function(url) {
+                if (!url) return "";
+                if (url.includes("drive.google.com") && url.includes("/file/d/")) {
+                    const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                    if (idMatch && idMatch[1]) {
+                        return `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
+                    }
+                }
+                return url;
+            },
+
             // 開啟私人導遊頁面
             open: function(title) {
                 const data = guideDatabase[title];
@@ -184,19 +196,18 @@
                 }
                 this.state.currentTitle = title;
                 
-                // 設定主題色
                 const themeColor = data.themeColor || '#4b5563';
                 document.documentElement.style.setProperty('--guide-color', themeColor);
                 
-                // 應用顏色到 UI
                 document.getElementById('guide-top-title').innerText = "🏮 " + data.title;
                 document.getElementById('guide-top-title').style.color = themeColor;
                 
                 document.getElementById('guide-hero-title').innerText = data.title;
                 
-                // 設定大圖
                 const imgContainer = document.getElementById('guide-hero-img-container');
-                const imgUrl = data.heroImg || "https://placehold.co/600x400?text=No+Image";
+                const rawImgUrl = data.heroImg;
+                const imgUrl = this.convertDriveLink(rawImgUrl) || "https://placehold.co/600x400?text=No+Image";
+                
                 imgContainer.innerHTML = `<img src="${imgUrl}" referrerpolicy="no-referrer" class="w-full h-full object-cover">`;
 
                 const overlay = document.getElementById('guide-overlay');
@@ -217,7 +228,6 @@
                 const title = document.getElementById('static-modal-title');
                 const closeBtn = document.getElementById('static-modal-close-btn');
 
-                // 應用顏色
                 const themeColor = data.themeColor || '#4b5563';
                 title.style.color = themeColor;
                 closeBtn.style.color = themeColor;
@@ -236,18 +246,21 @@
                     
                     if (rawText.includes("||")) {
                         const items = rawText.split("||");
-                        // 修改：間距改小 (space-y-3)，移除不必要的 padding
-                        let listHtml = '<div class="space-y-3">'; 
+                        
+                        // 修正：space-y-2 (卡片間距緊湊)
+                        let listHtml = '<div class="space-y-2">'; 
                         items.forEach(item => {
                             const parts = item.split(":::");
                             const foodName = parts[0] ? parts[0].trim() : "";
                             const foodDesc = parts[1] ? parts[1].trim() : "";
                             
                             if(foodName) {
-                                // 修改：padding 改小 (p-3)，標題下方 margin 改小 (mb-1)，行高改緊 (leading-snug)
+                                // 修正：
+                                // gap-0.5: 標題與內文間距極小
+                                // leading-tight: 行高緊湊
                                 listHtml += `
-                                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm">
-                                        <h4 class="font-bold text-lg mb-1 flex items-center gap-2" style="color:${themeColor}">
+                                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-0.5">
+                                        <h4 class="font-bold text-lg leading-tight flex items-center gap-2" style="color:${themeColor}">
                                             <i class="fas fa-utensils text-sm"></i> ${foodName}
                                         </h4>
                                         <p class="text-gray-600 leading-snug text-base">${foodDesc}</p>
@@ -274,10 +287,7 @@
             }
         };
 
-        // ==========================================
-        // 3. Main App Logic
-        // ==========================================
-        const apiUrl = "https://script.google.com/macros/s/AKfycbxPtv0rhx9LHpryrcJ4LrxZk7wyIaFOMhoNrPymG7mlbEZJ3oHtNHTp2TuPR1teXD4eUg/exec";
+        const apiUrl = "https://script.google.com/macros/s/AKfycby79Izn8WP0pIpkADK5E_rcj7wLqk6Ga2MrHg2bYT7ETmnkSdwGF2mjSct4ZWj_IU4w/exec";
         
         let travelData = {};
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
