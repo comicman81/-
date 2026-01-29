@@ -50,6 +50,23 @@
         
         .theme-text { color: var(--guide-color, #4b5563); }
         .theme-bg-light { background-color: var(--guide-color); opacity: 0.1; }
+
+        /* 氣象小工具樣式 */
+        .weather-badge {
+            font-family: 'Noto Sans TC', sans-serif;
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #bae6fd;
+            color: #0ea5e9;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-top: 4px;
+            animation: fadeIn 1s ease-out;
+        }
     </style>
 </head>
 <body class="pb-24">
@@ -61,10 +78,15 @@
 
     <div id="snow-container"></div>
 
-    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 rounded-b-[2rem] shadow-sm border-b border-blue-50">
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-40 px-6 py-3 rounded-b-[2rem] shadow-sm border-b border-blue-50">
         <div class="flex justify-between items-center">
-            <h1 class="text-xl font-black text-sky-500 tracking-wider">冬季只見線之旅 ☃️</h1>
-            <div class="bg-blue-50 text-sky-400 w-10 h-10 rounded-full flex items-center justify-center shadow-inner overflow-hidden">
+            <div>
+                <h1 class="text-xl font-black text-sky-500 tracking-wider">冬季只見線之旅 ☃️</h1>
+                <div id="local-weather" class="weather-badge" onclick="updateWeather(true)">
+                    <i class="fas fa-location-arrow animate-pulse"></i> 定位中...
+                </div>
+            </div>
+            <div class="bg-blue-50 text-sky-400 w-10 h-10 rounded-full flex items-center justify-center shadow-inner overflow-hidden flex-shrink-0">
                 <img src="https://ui-avatars.com/api/?name=只&background=38bdf8&color=ffffff&size=128&font-size=0.6&length=1" class="w-full h-full object-cover">
             </div>
         </div>
@@ -163,18 +185,79 @@
 
     <script>
         // ==========================================
-        // 1. Guide Database
+        // 1. Weather Logic (Open-Meteo with JMA)
+        // ==========================================
+        
+        function updateWeather(force = false) {
+            const badge = document.getElementById('local-weather');
+            if (!force && sessionStorage.getItem('cached_weather')) {
+                badge.innerHTML = sessionStorage.getItem('cached_weather');
+                return;
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    try {
+                        // 指定 models=jma_gsm (日本氣象廳資料)
+                        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,weather_code&timezone=auto&models=jma_gsm`;
+                        
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        
+                        if (data.current) {
+                            const temp = Math.round(data.current.temperature_2m);
+                            const feel = Math.round(data.current.apparent_temperature);
+                            const code = data.current.weather_code;
+                            const wInfo = getWeatherIcon(code);
+                            
+                            // 組合顯示文字：天氣圖示 溫度 (體感: XX)
+                            const html = `${wInfo.icon} ${temp}°C <span class="text-xs opacity-80">(體感 ${feel}°)</span>`;
+                            
+                            badge.innerHTML = html;
+                            sessionStorage.setItem('cached_weather', html);
+                        }
+                    } catch (e) {
+                        console.error("Weather Error", e);
+                        badge.innerHTML = `<i class="fas fa-wifi text-red-400"></i> 氣象暫停`;
+                    }
+                }, (err) => {
+                    console.warn("GPS Access Denied");
+                    badge.innerHTML = `<i class="fas fa-map-marker-alt text-gray-400"></i> 請開啟定位`;
+                });
+            } else {
+                badge.innerHTML = "不支援定位";
+            }
+        }
+
+        // WMO Weather Code to Icon & Text (針對雪國優化)
+        function getWeatherIcon(code) {
+            if (code === 0) return { icon: '<i class="fas fa-sun text-orange-400"></i>', text: '晴' };
+            if (code <= 3) return { icon: '<i class="fas fa-cloud-sun text-yellow-400"></i>', text: '多雲' };
+            if (code <= 48) return { icon: '<i class="fas fa-smog text-gray-400"></i>', text: '霧' };
+            if (code <= 57) return { icon: '<i class="fas fa-cloud-rain text-blue-400"></i>', text: '毛毛雨' };
+            if (code <= 67) return { icon: '<i class="fas fa-umbrella text-blue-500"></i>', text: '雨' };
+            if (code <= 77) return { icon: '<i class="far fa-snowflake text-sky-300 animate-spin-slow"></i>', text: '雪' }; // 雪
+            if (code <= 82) return { icon: '<i class="fas fa-cloud-showers-heavy text-blue-600"></i>', text: '大雨' };
+            if (code <= 86) return { icon: '<i class="fas fa-snowflake text-white bg-sky-300 rounded-full p-0.5"></i>', text: '大雪' }; // 大雪
+            if (code <= 99) return { icon: '<i class="fas fa-bolt text-yellow-500"></i>', text: '雷雨' };
+            return { icon: '<i class="fas fa-cloud text-gray-400"></i>', text: '陰' };
+        }
+
+        // ==========================================
+        // 2. Guide Database
         // ==========================================
         const guideDatabase = {};
 
         // ==========================================
-        // 2. Guide App Logic
+        // 3. Guide App Logic
         // ==========================================
         
         const guideApp = {
             state: { currentTitle: null }, 
 
-            // 自動轉換 Google Drive 分享連結
             convertDriveLink: function(url) {
                 if (!url) return "";
                 if (url.includes("drive.google.com") && url.includes("/file/d/")) {
@@ -186,7 +269,6 @@
                 return url;
             },
 
-            // 開啟私人導遊頁面
             open: function(title) {
                 const data = guideDatabase[title];
                 
@@ -204,12 +286,10 @@
                 
                 document.getElementById('guide-hero-title').innerText = data.title;
                 
-                // 設定大圖
                 const imgContainer = document.getElementById('guide-hero-img-container');
                 const rawImgUrl = data.heroImg;
                 const imgUrl = this.convertDriveLink(rawImgUrl) || "https://placehold.co/600x400?text=No+Image";
                 
-                // ⚠️ 強制加入 no-referrer
                 imgContainer.innerHTML = `<img src="${imgUrl}" referrerpolicy="no-referrer" class="w-full h-full object-cover">`;
 
                 const overlay = document.getElementById('guide-overlay');
@@ -222,7 +302,6 @@
                 document.getElementById('guide-overlay').classList.remove('flex');
             },
 
-            // 顯示靜態資料 Modal
             showStaticModal: function(type) {
                 const data = guideDatabase[this.state.currentTitle];
                 const modal = document.getElementById('static-modal');
@@ -249,7 +328,6 @@
                     if (rawText.includes("||")) {
                         const items = rawText.split("||");
                         
-                        // 修正：space-y-1 (極致緊湊的卡片間距, 4px)
                         let listHtml = '<div class="space-y-1">'; 
                         items.forEach(item => {
                             const parts = item.split(":::");
@@ -257,9 +335,6 @@
                             const foodDesc = parts[1] ? parts[1].trim() : "";
                             
                             if(foodName) {
-                                // 修正：
-                                // p-2.5: 卡片內邊距 (10px)
-                                // gap-0.5: 標題與內文幾乎貼合
                                 listHtml += `
                                     <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-0.5">
                                         <h4 class="font-bold text-lg leading-none flex items-center gap-2" style="color:${themeColor}">
@@ -289,7 +364,6 @@
             }
         };
 
-        // ⚠️ 您提供的新 GAS 網址
         const apiUrl = "https://script.google.com/macros/s/AKfycby79Izn8WP0pIpkADK5E_rcj7wLqk6Ga2MrHg2bYT7ETmnkSdwGF2mjSct4ZWj_IU4w/exec";
         
         let travelData = {};
@@ -332,6 +406,10 @@
                 document.getElementById('loading-screen').style.display = 'none';
                 renderSchedule();
                 createSnow();
+                
+                // 啟動氣象抓取
+                updateWeather(); 
+
             } catch (e) {
                 console.error("同步錯誤:", e);
                 document.getElementById('loading-text').innerHTML = "同步失敗<br><span style='font-size:12px;opacity:0.8'>請檢查 GAS 網址或資料結構</span>";
