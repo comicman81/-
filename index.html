@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
-    <link rel="manifest" href="manifest.json?v=24">
+    <link rel="manifest" href="manifest.json?v=25">
     <meta name="theme-color" content="#38bdf8">
     
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=只&background=38bdf8&color=ffffff&size=512&font-size=0.6&length=1">
@@ -23,7 +23,10 @@
         @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
         .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.6); transition: all 0.3s; }
         .day-btn.active { background-color: #38bdf8; color: white; transform: scale(1.05); box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4); }
+        
+        /* Loading 畫面優化 */
         #loading-screen { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
         .item-completed { opacity: 0.6; filter: grayscale(0.4); transform: scale(0.98); }
         .memo-link { color: #38bdf8; text-decoration: underline; font-weight: bold; }
         .action-btn { font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; height: 42px; }
@@ -381,10 +384,9 @@
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
 
         // === 公積金邏輯 (雲端版) ===
-        let expenses = []; // 改為記憶體變數，資料來自 fetchTravelData
+        let expenses = []; 
 
         function renderExpenses() {
-            // 從 travelData 讀取
             if (travelData.expenses) {
                 expenses = travelData.expenses;
             }
@@ -448,7 +450,7 @@
 
             const newExpense = {
                 action: "add",
-                id: Date.now().toString(), // 唯一 ID
+                id: Date.now().toString(),
                 date: date,
                 amount: amount,
                 desc: desc
@@ -457,17 +459,16 @@
             setLoading(true);
             closeExpenseModal();
 
-            // 發送 POST 請求到 GAS
             fetch(apiUrl, {
                 method: "POST",
-                mode: "no-cors", // 重要：GAS post 跨域限制
+                mode: "no-cors", 
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(newExpense)
             }).then(() => {
-                // 等待 1 秒後重新抓取資料
                 setTimeout(() => {
+                    // 強制重新載入資料 (相當於按下重新整理)
                     fetchTravelData().then(() => setLoading(false));
-                }, 1000);
+                }, 1500); 
             }).catch(err => {
                 console.error(err);
                 alert("新增失敗，請檢查網路");
@@ -486,7 +487,7 @@
                 }).then(() => {
                     setTimeout(() => {
                         fetchTravelData().then(() => setLoading(false));
-                    }, 1000);
+                    }, 1500);
                 }).catch(err => {
                     console.error(err);
                     setLoading(false);
@@ -515,29 +516,59 @@
 
         async function fetchTravelData() {
             try {
-                const res = await fetch(apiUrl + "?t=" + Date.now());
-                if (!res.ok) throw new Error("Network response was not ok");
+                // 顯示讀取中
+                document.getElementById('loading-text').innerText = "連線資料庫...";
                 
+                const res = await fetch(apiUrl + "?t=" + Date.now());
+                if (!res.ok) throw new Error("網路連線失敗: " + res.status);
+                
+                document.getElementById('loading-text').innerText = "解析資料...";
                 const rawData = await res.json();
-                if (rawData.error) throw new Error(rawData.error);
+                
+                if (rawData.error) throw new Error("後端錯誤: " + rawData.error);
+
                 travelData = rawData; 
+
+                // 檢查資料結構
+                if (!travelData.days) throw new Error("資料格式錯誤：缺少 days 欄位");
+                
+                // 處理導遊資料
                 if (rawData.guides) {
-                    console.log("成功載入導遊資料:", Object.keys(rawData.guides));
                     Object.assign(guideDatabase, rawData.guides);
                 }
                 
-                // 渲染所有資料
-                renderSchedule();
-                renderExpenses(); // 渲染公積金
+                document.getElementById('loading-text').innerText = "繪製畫面...";
                 
+                // 渲染所有資料 (這裡最容易出錯)
+                try {
+                    renderSchedule();
+                } catch (e) {
+                    throw new Error("渲染行程表失敗: " + e.message);
+                }
+
+                try {
+                    renderExpenses(); 
+                } catch (e) {
+                    throw new Error("渲染公積金失敗: " + e.message);
+                }
+                
+                // 成功：關閉讀取畫面
                 document.getElementById('loading-screen').style.display = 'none';
                 
-                // 啟動氣象抓取
+                // 啟動附加功能
                 updateWeather(); 
+                createSnow();
 
             } catch (e) {
                 console.error("同步錯誤:", e);
-                document.getElementById('loading-text').innerHTML = "同步失敗<br><span style='font-size:12px;opacity:0.8'>請檢查 GAS 網址或資料結構</span>";
+                // ❌ 發生錯誤時，直接顯示在螢幕上，不要卡住
+                const loadingDiv = document.getElementById('loading-screen');
+                loadingDiv.innerHTML = `
+                    <div class="text-red-500 text-6xl mb-4"><i class="fas fa-exclamation-triangle"></i></div>
+                    <h3 class="text-slate-700 font-bold text-xl mb-2">發生錯誤</h3>
+                    <p class="text-red-500 font-mono text-sm px-6 text-center break-all">${e.message}</p>
+                    <button onclick="location.reload()" class="mt-6 bg-slate-200 text-slate-600 px-6 py-2 rounded-full font-bold">重新整理</button>
+                `;
             }
         }
 
@@ -646,8 +677,6 @@
 
         window.onload = () => {
             fetchTravelData();
-            updateWeather();
-            createSnow();
         };
     </script>
 </body>
