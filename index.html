@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>冬季只見線之旅 ❄️</title>
     
-    <link rel="manifest" href="manifest.json?v=21">
+    <link rel="manifest" href="manifest.json?v=24">
     <meta name="theme-color" content="#38bdf8">
     
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=只&background=38bdf8&color=ffffff&size=512&font-size=0.6&length=1">
@@ -24,10 +24,10 @@
         .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.6); transition: all 0.3s; }
         .day-btn.active { background-color: #38bdf8; color: white; transform: scale(1.05); box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4); }
         #loading-screen { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .img-container { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #e2e8f0; }
         .item-completed { opacity: 0.6; filter: grayscale(0.4); transform: scale(0.98); }
         .memo-link { color: #38bdf8; text-decoration: underline; font-weight: bold; }
         .action-btn { font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; height: 42px; }
+        .img-container { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #e2e8f0; }
 
         /* 通用導遊模式樣式 */
         #guide-overlay { font-family: 'Noto Sans TC', sans-serif; }
@@ -67,11 +67,27 @@
             margin-top: 6px;
             cursor: pointer;
             transition: all 0.2s;
-            /* 確保它不會被其他元素蓋住 */
             position: relative; 
             z-index: 50; 
         }
         .weather-badge:active { transform: scale(0.95); background: #f0f9ff; }
+
+        /* 公積金樣式 */
+        .expense-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: white; padding: 1rem; border-radius: 1rem;
+            margin-bottom: 0.5rem; border: 1px solid #f1f5f9;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .expense-delete { color: #cbd5e1; padding: 0.5rem; }
+        .expense-delete:hover { color: #ef4444; }
+        
+        /* Loading 遮罩 */
+        #expense-loading {
+            position: absolute; inset: 0; background: rgba(255,255,255,0.8);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 50; backdrop-filter: blur(2px);
+        }
     </style>
 </head>
 <body class="pb-24">
@@ -87,11 +103,9 @@
         <div class="flex justify-between items-center">
             <div>
                 <h1 class="text-xl font-black text-sky-500 tracking-wider">冬季只見線之旅 ☃️</h1>
-                
                 <div id="local-weather" class="weather-badge" onclick="updateWeather(true)">
                     <i class="fas fa-location-arrow animate-pulse"></i> 取得天氣中...
                 </div>
-
             </div>
             <div class="bg-blue-50 text-sky-400 w-10 h-10 rounded-full flex items-center justify-center shadow-inner overflow-hidden flex-shrink-0">
                 <img src="https://ui-avatars.com/api/?name=只&background=38bdf8&color=ffffff&size=128&font-size=0.6&length=1" class="w-full h-full object-cover">
@@ -105,11 +119,29 @@
             <div id="schedule-container" class="px-4 pb-4 space-y-5"></div>
         </section>
 
-        <section id="tab-expenses" class="tab-content hidden px-5 py-6">
-            <div class="bg-gradient-to-r from-sky-400 to-blue-400 rounded-[2rem] p-6 shadow-lg text-white text-center mb-8">
-                <p class="text-blue-100 text-sm font-bold mb-1">公積金預算</p>
-                <h2 id="total-expense" class="text-4xl font-black">¥ 0</h2>
+        <section id="tab-expenses" class="tab-content hidden px-5 py-6 relative min-h-[50vh]">
+            
+            <div id="expense-loading" class="hidden">
+                <div class="text-sky-500 text-3xl animate-spin mb-2"><i class="fas fa-sync-alt"></i></div>
+                <p class="text-sky-500 font-bold text-sm">雲端同步中...</p>
             </div>
+
+            <div class="bg-gradient-to-r from-sky-400 to-blue-400 rounded-[2rem] p-6 shadow-lg text-white text-center mb-6 relative overflow-hidden">
+                <div class="absolute -right-6 -top-6 text-white/10 text-9xl"><i class="fas fa-yen-sign"></i></div>
+                <p class="text-blue-100 text-sm font-bold mb-1 relative z-10">公積金總支出 (全員同步)</p>
+                <h2 id="total-expense" class="text-5xl font-black relative z-10">¥ 0</h2>
+            </div>
+
+            <button onclick="openExpenseModal()" class="w-full bg-white text-sky-500 font-bold py-4 rounded-2xl shadow-sm border border-sky-100 mb-6 flex items-center justify-center gap-2 hover:bg-sky-50 transition active:scale-95">
+                <i class="fas fa-plus-circle text-xl"></i> 記一筆花費
+            </button>
+
+            <div class="flex justify-between items-end mb-2 px-2">
+                <h3 class="font-bold text-slate-700">花費明細</h3>
+                <span class="text-xs text-slate-400" id="expense-count">0 筆記錄</span>
+            </div>
+            <div id="expense-list" class="space-y-3 pb-20">
+                </div>
         </section>
     </main>
 
@@ -121,60 +153,62 @@
         </div>
     </div>
 
+    <div id="expense-modal" class="fixed inset-0 bg-slate-900/50 z-[150] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl transform transition-all scale-100">
+            <h3 class="text-xl font-black text-slate-700 mb-6 text-center">📝 新增一筆花費</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 ml-1">日期</label>
+                    <input type="date" id="exp-date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-bold focus:outline-none focus:border-sky-400">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 ml-1">金額 (¥)</label>
+                    <input type="number" id="exp-amount" placeholder="例如: 1000" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-bold focus:outline-none focus:border-sky-400 text-lg">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 ml-1">說明</label>
+                    <input type="text" id="exp-desc" placeholder="例如: 晚餐、飲料" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-bold focus:outline-none focus:border-sky-400">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mt-8">
+                <button onclick="closeExpenseModal()" class="py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">取消</button>
+                <button onclick="saveExpense()" class="py-3 rounded-xl font-bold text-white bg-sky-400 hover:bg-sky-500 shadow-md shadow-sky-200">儲存</button>
+            </div>
+        </div>
+    </div>
+
     <footer class="fixed bottom-6 left-6 right-6 h-16 bg-white/90 backdrop-blur-md rounded-full shadow-2xl flex justify-around items-center z-40 border border-white/50">
         <button onclick="switchTab('schedule')" id="btn-schedule" class="text-sky-400"><i class="fas fa-map text-xl"></i></button>
         <button onclick="switchTab('expenses')" id="btn-expenses" class="text-slate-300"><i class="fas fa-yen-sign text-xl"></i></button>
     </footer>
 
     <div id="guide-overlay" class="fixed inset-0 bg-white z-[200] hidden flex-col overflow-hidden">
-        
         <header class="bg-white/90 backdrop-blur shadow-sm p-4 flex justify-between items-center z-10 shrink-0 border-b">
-            <div>
-                <h1 id="guide-top-title" class="text-lg font-bold transition-colors duration-300">🏮 私人導遊</h1>
-            </div>
-            <button onclick="guideApp.close()" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold hover:bg-gray-200 transition">
-                <i class="fas fa-times"></i>
-            </button>
+            <div><h1 id="guide-top-title" class="text-lg font-bold transition-colors duration-300">🏮 私人導遊</h1></div>
+            <button onclick="guideApp.close()" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold hover:bg-gray-200 transition"><i class="fas fa-times"></i></button>
         </header>
-
         <main id="guide-scroll-container" class="flex-1 overflow-y-auto bg-[#f8fafc] pb-20">
-            
             <div class="relative h-80 w-full">
                 <div id="guide-hero-img-container" class="w-full h-full bg-gray-200"></div>
-                <div class="absolute inset-0 bg-black/40 flex items-center justify-center p-6 text-white text-center">
-                    <h2 id="guide-hero-title" class="text-4xl md:text-5xl font-black drop-shadow-lg tracking-widest leading-tight"></h2>
-                </div>
+                <div class="absolute inset-0 bg-black/40 flex items-center justify-center p-6 text-white text-center"><h2 id="guide-hero-title" class="text-4xl md:text-5xl font-black drop-shadow-lg tracking-widest leading-tight"></h2></div>
             </div>
-
             <div class="p-5 space-y-4 max-w-xl mx-auto mt-6">
-                
                 <button onclick="guideApp.showStaticModal('culture')" class="feature-btn">
                     <div class="feature-icon bg-orange-100 text-orange-600">🏯</div>
-                    <div class="flex-1">
-                        <h3 class="font-bold text-gray-800 text-lg">文化與歷史解說</h3>
-                        <p class="text-xs text-gray-400">了解這裡的故事與淵源</p>
-                    </div>
-                    <i class="fas fa-chevron-right text-gray-300"></i>
+                    <div class="flex-1"><h3 class="font-bold text-gray-800 text-lg">文化與歷史解說</h3><p class="text-xs text-gray-400">了解這裡的故事與淵源</p></div><i class="fas fa-chevron-right text-gray-300"></i>
                 </button>
-
                 <button onclick="guideApp.showStaticModal('food')" class="feature-btn">
                     <div class="feature-icon bg-red-100 text-red-600">🍜</div>
-                    <div class="flex-1">
-                        <h3 class="font-bold text-gray-800 text-lg">當地美食</h3>
-                        <p class="text-xs text-gray-400">探索必吃的美味料理</p>
-                    </div>
-                    <i class="fas fa-chevron-right text-gray-300"></i>
+                    <div class="flex-1"><h3 class="font-bold text-gray-800 text-lg">當地美食</h3><p class="text-xs text-gray-400">探索必吃的美味料理</p></div><i class="fas fa-chevron-right text-gray-300"></i>
                 </button>
-
                 <button onclick="guideApp.openExternalGemini()" class="feature-btn">
                     <div class="feature-icon bg-indigo-100 text-indigo-600">✨</div>
-                    <div class="flex-1">
-                        <h3 class="font-bold text-gray-800 text-lg">旅遊管家</h3>
-                        <p class="text-xs text-gray-400">點擊前往 Gemini 詢問更多</p>
-                    </div>
-                    <i class="fas fa-external-link-alt text-gray-300"></i>
+                    <div class="flex-1"><h3 class="font-bold text-gray-800 text-lg">旅遊管家</h3><p class="text-xs text-gray-400">點擊前往 Gemini 詢問更多</p></div><i class="fas fa-external-link-alt text-gray-300"></i>
                 </button>
-
                 <div class="text-center text-xs text-gray-400 pt-4">Powered by Gemini (External) ✨</div>
             </div>
         </main>
@@ -194,7 +228,6 @@
         // ==========================================
         // 1. Weather Logic
         // ==========================================
-        
         const DEFAULT_LAT = 37.9122; // 新潟
         const DEFAULT_LON = 139.0614;
         const DEFAULT_NAME = "新潟";
@@ -211,19 +244,15 @@
             const fetchWeather = async (lat, lon, locationName = "") => {
                 try {
                     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,weather_code&timezone=auto&models=jma_gsm`;
-                    
                     const res = await fetch(url);
                     const data = await res.json();
-                    
                     if (data.current) {
                         const temp = Math.round(data.current.temperature_2m);
                         const feel = Math.round(data.current.apparent_temperature);
                         const code = data.current.weather_code;
                         const wInfo = getWeatherIcon(code);
-                        
                         const locHtml = locationName ? `<span class="font-bold">${locationName}</span> ` : "";
                         const html = `${wInfo.icon} ${locHtml}${temp}°C <span class="text-xs opacity-80 scale-90 inline-block">(體感 ${feel}°)</span>`;
-                        
                         badge.innerHTML = html;
                         sessionStorage.setItem('cached_weather', html);
                     }
@@ -233,20 +262,12 @@
                 }
             };
 
-            // 手機版瀏覽器需要 https 才能開啟 GPS
             if (navigator.geolocation) {
                 badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 定位中...';
-                
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        fetchWeather(position.coords.latitude, position.coords.longitude);
-                    }, 
-                    (err) => {
-                        console.warn("GPS Failed", err);
-                        // 定位失敗時，自動切換到預設地點
-                        fetchWeather(DEFAULT_LAT, DEFAULT_LON, DEFAULT_NAME);
-                    },
-                    { timeout: 8000 } // 給手機多一點時間 (8秒)
+                    (position) => { fetchWeather(position.coords.latitude, position.coords.longitude); }, 
+                    (err) => { console.warn("GPS Failed", err); fetchWeather(DEFAULT_LAT, DEFAULT_LON, DEFAULT_NAME); },
+                    { timeout: 8000 }
                 );
             } else {
                 fetchWeather(DEFAULT_LAT, DEFAULT_LON, DEFAULT_NAME);
@@ -274,10 +295,8 @@
         // ==========================================
         // 3. Guide App Logic
         // ==========================================
-        
         const guideApp = {
             state: { currentTitle: null }, 
-
             convertDriveLink: function(url) {
                 if (!url) return "";
                 if (url.includes("drive.google.com") && url.includes("/file/d/")) {
@@ -288,80 +307,58 @@
                 }
                 return url;
             },
-
             open: function(title) {
                 const data = guideDatabase[title];
-                
                 if (!data) { 
                     alert("⚠️ 尚未建立此景點的導覽資料。\n請在 Google 試算表 'guideData' 分頁新增一筆，A欄填寫: " + title); 
                     return; 
                 }
                 this.state.currentTitle = title;
-                
                 const themeColor = data.themeColor || '#4b5563';
                 document.documentElement.style.setProperty('--guide-color', themeColor);
-                
                 document.getElementById('guide-top-title').innerText = "🏮 " + data.title;
                 document.getElementById('guide-top-title').style.color = themeColor;
-                
                 document.getElementById('guide-hero-title').innerText = data.title;
-                
                 const imgContainer = document.getElementById('guide-hero-img-container');
                 const rawImgUrl = data.heroImg;
                 const imgUrl = this.convertDriveLink(rawImgUrl) || "https://placehold.co/600x400?text=No+Image";
-                
                 imgContainer.innerHTML = `<img src="${imgUrl}" referrerpolicy="no-referrer" class="w-full h-full object-cover">`;
-
                 const overlay = document.getElementById('guide-overlay');
                 overlay.classList.remove('hidden');
                 overlay.classList.add('flex');
             },
-
             close: function() {
                 document.getElementById('guide-overlay').classList.add('hidden');
                 document.getElementById('guide-overlay').classList.remove('flex');
             },
-
             showStaticModal: function(type) {
                 const data = guideDatabase[this.state.currentTitle];
                 const modal = document.getElementById('static-modal');
                 const body = document.getElementById('static-modal-body');
                 const title = document.getElementById('static-modal-title');
                 const closeBtn = document.getElementById('static-modal-close-btn');
-
                 const themeColor = data.themeColor || '#4b5563';
                 title.style.color = themeColor;
                 closeBtn.style.color = themeColor;
                 closeBtn.style.borderColor = themeColor + '30'; 
                 
                 let contentHTML = "";
-
                 if (type === 'culture') {
                     title.innerText = "🏯 文化與歷史解說";
                     const rawText = data.cultureText || "尚無此部分的介紹資料。";
                     contentHTML = `<div class="space-y-4">${rawText.split('\n').map(p => `<p>${p}</p>`).join('')}</div>`;
-
                 } else if (type === 'food') {
                     title.innerText = "🍜 當地美食介紹";
                     const rawText = data.foodText || "尚無此部分的介紹資料。";
-                    
                     if (rawText.includes("||")) {
                         const items = rawText.split("||");
-                        
                         let listHtml = '<div class="space-y-1">'; 
                         items.forEach(item => {
                             const parts = item.split(":::");
                             const foodName = parts[0] ? parts[0].trim() : "";
                             const foodDesc = parts[1] ? parts[1].trim() : "";
-                            
                             if(foodName) {
-                                listHtml += `
-                                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-0.5">
-                                        <h4 class="font-bold text-lg leading-none flex items-center gap-2" style="color:${themeColor}">
-                                            <i class="fas fa-utensils text-sm"></i> ${foodName}
-                                        </h4>
-                                        <p class="text-gray-600 leading-snug text-base">${foodDesc}</p>
-                                    </div>`;
+                                listHtml += `<div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-0.5"><h4 class="font-bold text-lg leading-none flex items-center gap-2" style="color:${themeColor}"><i class="fas fa-utensils text-sm"></i> ${foodName}</h4><p class="text-gray-600 leading-snug text-base">${foodDesc}</p></div>`;
                             }
                         });
                         listHtml += '</div>';
@@ -370,24 +367,133 @@
                         contentHTML = rawText;
                     }
                 }
-
                 body.innerHTML = contentHTML; 
                 modal.classList.remove('hidden');
             },
-
-            openExternalGemini: function() {
-                window.open("https://gemini.google.com/app", "_blank");
-            },
-
-            closeModal: function(modalId) {
-                document.getElementById(modalId).classList.add('hidden');
-            }
+            openExternalGemini: function() { window.open("https://gemini.google.com/app", "_blank"); },
+            closeModal: function(modalId) { document.getElementById(modalId).classList.add('hidden'); }
         };
 
-        const apiUrl = "https://script.google.com/macros/s/AKfycby79Izn8WP0pIpkADK5E_rcj7wLqk6Ga2MrHg2bYT7ETmnkSdwGF2mjSct4ZWj_IU4w/exec";
+        // ⚠️ 您提供的新 GAS 網址
+        const apiUrl = "https://script.google.com/macros/s/AKfycbxo07XbGKQ3d6-qnK3ctMtxgZNfZ1MTR1s7aneXjj-_VndH0lfTDDBH6iuC36XdExHf/exec";
         
         let travelData = {};
         let progress = JSON.parse(localStorage.getItem('trip_progress')) || {};
+
+        // === 公積金邏輯 (雲端版) ===
+        let expenses = []; // 改為記憶體變數，資料來自 fetchTravelData
+
+        function renderExpenses() {
+            // 從 travelData 讀取
+            if (travelData.expenses) {
+                expenses = travelData.expenses;
+            }
+
+            const total = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
+            document.getElementById('total-expense').innerText = '¥ ' + total.toLocaleString();
+            document.getElementById('expense-count').innerText = expenses.length + ' 筆記錄';
+
+            const list = document.getElementById('expense-list');
+            list.innerHTML = '';
+
+            // 日期排序
+            expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            expenses.forEach((item) => {
+                const div = document.createElement('div');
+                div.className = 'expense-item';
+                div.innerHTML = `
+                    <div class="flex-1">
+                        <div class="text-xs text-slate-400 font-bold mb-0.5">${item.date}</div>
+                        <div class="text-slate-700 font-bold text-lg leading-tight">${item.desc}</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="font-black text-sky-500 text-lg">¥ ${Number(item.amount).toLocaleString()}</div>
+                        <button onclick="deleteExpense('${item.id}')" class="expense-delete"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function openExpenseModal() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('exp-date').value = today;
+            document.getElementById('exp-amount').value = '';
+            document.getElementById('exp-desc').value = '';
+            document.getElementById('expense-modal').classList.remove('hidden');
+            document.getElementById('expense-modal').classList.add('flex');
+        }
+
+        function closeExpenseModal() {
+            document.getElementById('expense-modal').classList.add('hidden');
+            document.getElementById('expense-modal').classList.remove('flex');
+        }
+
+        function setLoading(isLoading) {
+            const loading = document.getElementById('expense-loading');
+            if(isLoading) loading.classList.remove('hidden');
+            else loading.classList.add('hidden');
+        }
+
+        function saveExpense() {
+            const date = document.getElementById('exp-date').value;
+            const amount = document.getElementById('exp-amount').value;
+            const desc = document.getElementById('exp-desc').value;
+
+            if (!date || !amount || !desc) {
+                alert("請填寫所有欄位！");
+                return;
+            }
+
+            const newExpense = {
+                action: "add",
+                id: Date.now().toString(), // 唯一 ID
+                date: date,
+                amount: amount,
+                desc: desc
+            };
+
+            setLoading(true);
+            closeExpenseModal();
+
+            // 發送 POST 請求到 GAS
+            fetch(apiUrl, {
+                method: "POST",
+                mode: "no-cors", // 重要：GAS post 跨域限制
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newExpense)
+            }).then(() => {
+                // 等待 1 秒後重新抓取資料
+                setTimeout(() => {
+                    fetchTravelData().then(() => setLoading(false));
+                }, 1000);
+            }).catch(err => {
+                console.error(err);
+                alert("新增失敗，請檢查網路");
+                setLoading(false);
+            });
+        }
+
+        function deleteExpense(id) {
+            if(confirm("確定要刪除這筆花費嗎？")) {
+                setLoading(true);
+                fetch(apiUrl, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "delete", id: id })
+                }).then(() => {
+                    setTimeout(() => {
+                        fetchTravelData().then(() => setLoading(false));
+                    }, 1000);
+                }).catch(err => {
+                    console.error(err);
+                    setLoading(false);
+                });
+            }
+        }
+        // === 公積金邏輯結束 ===
 
         function linkify(text) {
             if (!text) return "";
@@ -413,19 +519,22 @@
                 if (!res.ok) throw new Error("Network response was not ok");
                 
                 const rawData = await res.json();
-                
                 if (rawData.error) throw new Error(rawData.error);
-
                 travelData = rawData; 
-
                 if (rawData.guides) {
                     console.log("成功載入導遊資料:", Object.keys(rawData.guides));
                     Object.assign(guideDatabase, rawData.guides);
                 }
-
-                document.getElementById('loading-screen').style.display = 'none';
+                
+                // 渲染所有資料
                 renderSchedule();
-                createSnow();
+                renderExpenses(); // 渲染公積金
+                
+                document.getElementById('loading-screen').style.display = 'none';
+                
+                // 啟動氣象抓取
+                updateWeather(); 
+
             } catch (e) {
                 console.error("同步錯誤:", e);
                 document.getElementById('loading-text').innerHTML = "同步失敗<br><span style='font-size:12px;opacity:0.8'>請檢查 GAS 網址或資料結構</span>";
@@ -437,7 +546,6 @@
             const tabs = document.getElementById('day-tabs');
             const container = document.getElementById('schedule-container');
             tabs.innerHTML = ''; container.innerHTML = '';
-
             travelData.days.forEach((d, dayIdx) => {
                 const btn = document.createElement('button');
                 btn.className = `day-btn flex-shrink-0 px-6 py-2 rounded-[1.5rem] flex flex-col items-center bg-white text-slate-400 border border-slate-100 ${dayIdx === 0 ? 'active' : ''}`;
@@ -459,48 +567,28 @@
                     const isDone = progress[itemId];
                     const hasGuide = guideDatabase[item.title] !== undefined;
                     const imgHtml = `<img src="${item.img}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800'">`;
-                    
-                    const descHtml = item.desc ? `
-                        <div class="absolute bottom-3 left-3 bg-black/60 text-white px-3 py-1 rounded-lg text-xs font-bold backdrop-blur-sm max-w-[75%] truncate shadow-md">
-                            ${item.desc}
-                        </div>
-                    ` : '';
+                    const descHtml = item.desc ? `<div class="absolute bottom-3 left-3 bg-black/60 text-white px-3 py-1 rounded-lg text-xs font-bold backdrop-blur-sm max-w-[75%] truncate shadow-md">${item.desc}</div>` : '';
 
                     html += `
                         <div class="glass-card rounded-[2rem] overflow-hidden mb-5 shadow-sm ${isDone ? 'item-completed' : ''}">
                             <div class="img-container">
                                 ${imgHtml}
-                                <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm">
-                                    <i class="far fa-clock mr-1"></i>${item.time}
-                                </div>
+                                <div class="absolute top-3 left-3 bg-white/90 px-4 py-1.5 rounded-full text-sm font-black text-sky-500 shadow-sm"><i class="far fa-clock mr-1"></i>${item.time}</div>
                                 ${descHtml}
-                                <button onclick="toggleProgress('${itemId}')" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center">
-                                    ${isDone ? '✅' : '○'}
-                                </button>
+                                <button onclick="toggleProgress('${itemId}')" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center">${isDone ? '✅' : '○'}</button>
                             </div>
                             <div class="p-5">
                                 <h3 class="font-black text-lg text-slate-700 mb-3">${item.title}</h3>
-                                
                                 <div class="grid grid-cols-2 gap-3 mb-3">
                                     ${ hasGuide ? 
-                                    `<button onclick="guideApp.open('${item.title.replace(/'/g, "\\'")}')" class="action-btn bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl shadow-md active:scale-95 transition">
-                                        <i class="fas fa-user-tie mr-2"></i>私人導遊
-                                    </button>` : 
-                                    `<button disabled class="action-btn bg-slate-100 text-slate-300 rounded-xl cursor-not-allowed">
-                                        無導覽
-                                    </button>`
+                                    `<button onclick="guideApp.open('${item.title.replace(/'/g, "\\'")}')" class="action-btn bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl shadow-md active:scale-95 transition"><i class="fas fa-user-tie mr-2"></i>私人導遊</button>` : 
+                                    `<button disabled class="action-btn bg-slate-100 text-slate-300 rounded-xl cursor-not-allowed">無導覽</button>`
                                     }
-                                    <button onclick="openMemoByIndex(${dayIdx}, ${itemIdx})" class="action-btn bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200">
-                                        查看筆記
-                                    </button>
+                                    <button onclick="openMemoByIndex(${dayIdx}, ${itemIdx})" class="action-btn bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200">查看筆記</button>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
-                                    <button onclick="openGoApp()" class="action-btn bg-black text-white rounded-xl">
-                                        GO 叫車
-                                    </button>
-                                    <a href="${item.map}" target="_blank" class="action-btn bg-sky-400 text-white rounded-xl shadow-sm hover:bg-sky-500">
-                                        開啟導航
-                                    </a>
+                                    <button onclick="openGoApp()" class="action-btn bg-black text-white rounded-xl">GO 叫車</button>
+                                    <a href="${item.map}" target="_blank" class="action-btn bg-sky-400 text-white rounded-xl shadow-sm hover:bg-sky-500">開啟導航</a>
                                 </div>
                             </div>
                         </div>`;
@@ -528,6 +616,11 @@
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
             document.getElementById('btn-schedule').className = tab === 'schedule' ? 'text-sky-400' : 'text-slate-300';
             document.getElementById('btn-expenses').className = tab === 'expenses' ? 'text-sky-400' : 'text-slate-300';
+            
+            // 如果切換到公積金頁面，重新渲染
+            if (tab === 'expenses') {
+                renderExpenses();
+            }
         }
 
         function closeMemo() { 
@@ -551,12 +644,10 @@
             renderSchedule();
         }
 
-        // ==========================================
-        // 4. Initialization (平行執行，互不等待)
-        // ==========================================
         window.onload = () => {
-            fetchTravelData();  // 抓取行程資料
-            updateWeather();    // 抓取天氣資料 (獨立運作)
+            fetchTravelData();
+            updateWeather();
+            createSnow();
         };
     </script>
 </body>
